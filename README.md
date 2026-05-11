@@ -24,7 +24,9 @@ This documentation is organized into six documents:
 
 5. **ActionSpecifications.md** — Detailed specifications for each action type (parse_markdown, semantic_search, claude_reasoning, approval_gate). Provides the contract that implementations must conform to, independent of how the Harness is specified or which LLM is used. For engineers and auditors.
 
-6. **PythonImplementation.md** — Detailed Python implementation patterns (action registry, node execution loop, data flow between nodes, error handling). For engineers building implementations. 
+6. **PythonImplementation.md** — Detailed Python implementation patterns (action registry, node execution loop, data flow between nodes, error handling). For engineers building implementations.
+
+7. **UIStrategy.md** — Application design strategy for the demonstration implementation. Covers minimal feature set, user flows, approval gate UX, technology stack (Streamlit), and deployment considerations. For product, UX, and engineering teams building the demo application.
 
 ## FCA_Handbook_Text_And_Embeddings
 
