@@ -12,7 +12,7 @@ These components are put forward as a model for Compliance AI, enabling modifica
 
 ## Document Organisation
 
-This documentation is organized into five documents:
+This documentation is organized into six documents:
 
 1. **README.md** (this document) — Conceptual overview of the Harness pattern, design principles, and how it addresses compliance requirements. Implementation-agnostic; suitable for regulators, compliance teams, and architects.
 
@@ -22,7 +22,9 @@ This documentation is organized into five documents:
 
 4. **StructuredSearch.md** — How to rank regulatory search results appropriately. Explains multi-factor weighting (rule type, hierarchy, importance, section authority) and weights.yaml configuration. Foundational to the semantic_search action. For architects, compliance teams, and implementers designing search strategies.
 
-5. **ActionSpecifications.md** — Detailed specifications for each action type (parse_markdown, semantic_search, claude_reasoning, approval_gate). Provides the contract that implementations must conform to, independent of how the Harness is specified or which LLM is used. For engineers and auditors. 
+5. **ActionSpecifications.md** — Detailed specifications for each action type (parse_markdown, semantic_search, claude_reasoning, approval_gate). Provides the contract that implementations must conform to, independent of how the Harness is specified or which LLM is used. For engineers and auditors.
+
+6. **PythonImplementation.md** — Detailed Python implementation patterns (action registry, node execution loop, data flow between nodes, error handling). For engineers building implementations. 
 
 ## FCA_Handbook_Text_And_Embeddings
 
