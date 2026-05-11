@@ -10,9 +10,9 @@ This document outlines two complementary components:
 
 These components are put forward as a model for Compliance AI, enabling modification to suit other codified requirements.
 
-## Document Organisation
+## Getting Started
 
-This documentation is organized into six documents:
+To understand the Compliance Agent Harness, read the documents in order:
 
 1. **README.md** (this document) — Conceptual overview of the Harness pattern, design principles, and how it addresses compliance requirements. Implementation-agnostic; suitable for regulators, compliance teams, and architects.
 
@@ -27,6 +27,12 @@ This documentation is organized into six documents:
 6. **PythonImplementation.md** — Detailed Python implementation patterns (action registry, node execution loop, data flow between nodes, error handling). For engineers building implementations.
 
 7. **UIStrategy.md** — Application design strategy for the demonstration implementation. Covers minimal feature set, user flows, approval gate UX, technology stack (Streamlit), and deployment considerations. For product, UX, and engineering teams building the demo application.
+
+**FCA_Handbook_Template_PRIN.json** provides a concrete example of the data structure with actual embeddings (Voyage 3-Large and OpenAI text-embedding-3-large models).
+
+## About This Repository
+
+This is a pattern and reference implementation for Compliance AI systems. While applied here to the FCA Handbook, the architecture is designed to accommodate other regulatory codified requirements with minimal modification.
 
 ## FCA_Handbook_Text_And_Embeddings
 
