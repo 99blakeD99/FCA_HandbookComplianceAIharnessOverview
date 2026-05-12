@@ -26,7 +26,7 @@ To understand the Compliance Agent Harness, read the documents in order:
 
 6. **PythonImplementation.md** — Detailed Python implementation patterns (action registry, node execution loop, data flow between nodes, error handling). For engineers building implementations.
 
-7. **UIStrategy.md** — Application design strategy for the demonstration implementation. Covers minimal feature set, user flows, approval gate UX, technology stack (Streamlit), and deployment considerations. For product, UX, and engineering teams building the demo application. Also see [UI_mockup.html](https://raw.githubusercontent.com/99blakeD99/ComplianceAIharnessOverview/main/UI_mockup.html) (interactive mockup).
+7. **UIStrategy.md** — Application design strategy for the demonstration implementation. Covers minimal feature set, user flows, approval gate UX, technology stack (Streamlit), and deployment considerations. For product, UX, and engineering teams building the demo application. Also see [UI_mockup.html](https://htmlpreview.github.io/?https://github.com/99blakeD99/ComplianceAIharnessOverview/blob/main/UI_mockup.html) (interactive mockup).
 
 **FCA_Handbook_Template_PRIN.json** provides a concrete example of the data structure with actual embeddings (Voyage 3-Large and OpenAI text-embedding-3-large models).
 
