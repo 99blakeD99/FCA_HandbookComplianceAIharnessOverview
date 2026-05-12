@@ -17,159 +17,93 @@ This document captures the UI design, architecture, and deployment strategy for 
 
 ## User Flows
 
-### Internal Tester Flow
+### User Flow
 
 ```
-1. Open demo app (internal link, no auth)
-2. Enter product description (markdown format)
-3. Enter compliance question
-4. Click "Analyze"
-5. See workflow progress (parsing → searching → reasoning → approval)
-6. Review compliance analysis:
-   - Claude's answer
-   - Cited rules (with rule IDs, binding level, relevance scores)
-   - Reasoning log (chain of logic, gaps identified, confidence score)
-7. Approval panel:
+1. Open demo app
+2. Acknowledge consent (beta status, interaction recording)
+3. Enter product description (paste text or upload .md file)
+4. Enter compliance question
+5. Click "Analyze Compliance"
+6. View results:
+   - Top ~20 retrieved FCA Handbook rules
+   - LLM reasoning explaining rule applicability
+7. Approval gate:
    - Review analysis
-   - Choose: Approve / Reject
-   - Optional: Add comments (used for process refinement)
+   - Choose: Approve or Request Clarification
+   - Optionally add comments on analysis quality
    - Submit
-8. See ApprovalDecision summary with approver identity and timestamp
-9. Download full audit trail (JSON) for testing
+8. Interaction recorded to audit trail for process improvement
 ```
 
-### FCA User Flow
-
-```
-1. Receive link + password (controlled distribution)
-2. Open demo, authenticate
-3. [Same as internal flow, steps 2-9]
-4. Additionally: See explanatory text about:
-   - What this demo shows (end-to-end harness workflow)
-   - What it doesn't show (not integrated with live systems, not authoritative guidance)
-   - Why this matters (FCA Handbook AI-accessibility as infrastructure)
-   - Feedback form (structured questions on usability, accuracy, next steps)
-```
+All interactions (product, question, rules, reasoning, approval, feedback) are logged per **Usage Records** (FirstImplementation.md) for later analysis.
 
 ## Feature Breakdown
 
-### Page 1: Input Form
+### Input Section
 
-**Title**: "FCA Handbook Compliance Analysis — Demo"
+**Product Description** (textarea):
+- Accept markdown-formatted product details
+- File upload option to attach .md files
+- Example populated for quick testing
 
-**Subtitle**: "Test the harness: Enter a product description and compliance question to see how the system retrieves and analyzes applicable FCA rules."
+**Compliance Question** (textarea):
+- Free-form compliance question
+- Example: "Which parts of the FCA Handbook apply to this product?"
 
-**Inputs**:
-- **Product Description** (textarea, ~500 chars):
-  - Placeholder with example markdown structure (features, use cases, etc.)
-  - Help text: "Markdown format. Include: Features, Use Cases, Data Handled, Decision Authority"
-- **Compliance Question** (text input):
-  - Placeholder: "Which COBS rules apply to algorithmic advice?"
-  - Help text: "Be specific. The system searches FCA Handbook for matching rules."
-
-**Actions**:
-- "Analyze" button (runs full workflow)
-- "Load Example" button (populates with sample product)
+**Submit**: "Analyze Compliance" button
 
 ---
 
-### Page 2: Workflow Progress
+### Results Section
 
-**While running:**
-- Show spinner/progress bar with status:
-  - "Parsing product description..."
-  - "Retrieving FCA rules (semantic search)..."
-  - "Reasoning with Claude..."
-  - "Routing to approval..."
+**Retrieved Rules** (top ~20 matching FCA Handbook rules):
+- Rule ID and header
+- Brief excerpt of rule text
 
-**On completion:**
-- Hide progress, show results below
+**LLM Reasoning**:
+- Natural language analysis of which rules apply and why
+- Interpretation of rule applicability to the product
 
 ---
 
-### Page 3: Compliance Analysis Results
+### Approval Gate
 
-**Section A: Analysis Summary**
-- Claude's answer (full text, ~500-2000 chars)
-- Confidence score (0-1, colored badge: green >0.8, yellow 0.6-0.8, red <0.6)
-
-**Section B: Cited Rules** (collapsible list)
-- For each citation:
-  - Rule ID (e.g., "COBS 2.1.1R")
-  - Binding Level badge: R (binding), G (guidance), E (evidential), D (deleted)
-  - Base similarity score (0-1, how closely matched the question)
-  - Weight breakdown (collapsed detail):
-    - rule_type_weight, hierarchy_multiplier, importance_multiplier, piece_weight
-    - Final score (product of all)
-  - Cited text (excerpt, ~200 chars)
-  - Full text button (modal or expand)
-
-**Section C: Reasoning Log** (collapsible)
-- Reasoning chain (Claude's step-by-step logic)
-- Gaps identified (array of edge cases or uncertainties)
-- Confidence score explanation
-
-**Transparency note**: "All weights, scores, and reasoning are shown for auditability. This is working code, not authoritative guidance."
-
----
-
-### Page 4: Approval Gate
-
-**Title**: "Compliance Officer Review"
-
-**Shows**:
-- Summary of analysis (above sections collapsed as reference)
-- Question: "Do you approve this compliance analysis?"
-
-**Approval Controls**:
+**Human Review**:
+- Question: "Do these results correctly identify the applicable FCA rules for this product?"
 - **Approve** button (green)
-- **Reject** button (red)
-- **Comments** textarea (required or strongly encouraged):
-  - Placeholder: "What was helpful? What was unclear? Any concerns? This helps us refine the analysis quality."
-  - Character limit: 500
-  - Help text: "Your feedback drives iteration on this system."
+- **Request Clarification** button (yellow)
+- Optional comments field (for feedback on analysis quality)
 
-**On submit**:
-- Capture:
-  - approver_name (text field, auto-populated if available, editable)
-  - approver_email (text field, auto-populated if available, editable)
-  - timestamp (captured server-side in UTC)
-  - decision (approved/rejected)
-  - comments (free text)
-- Store snapshot of full ComplianceAnalysis at approval time
-- Store all of the above in audit trail
+**Data Captured** (stored in interactions.json per Usage Records):
+- Approval decision (approved / rejected)
+- Approver feedback/comments
+- Timestamp
+- Full interaction context (product, question, rules retrieved, reasoning)
 
 ---
 
-### Page 5: Approval Decision Summary
+### Consent & Transparency
 
-**Shows**:
-- Decision: "Approved by [Name] on [Timestamp]" or "Rejected by [Name]"
-- Comments from approver (if provided)
-- Timestamp (ISO 8601 UTC)
-- Actions carried out (audit trail: ["presented_for_review", "identity_verified", "snapshot_recorded"])
+**Consent section at top**:
+- User acknowledges this is a beta/non-functional demonstration
+- User agrees interaction data may be recorded for system improvement
+- No user data will be stored long-term
 
-**Export/Download**:
-- Button to download full JSON audit trail (workflow inputs, node outputs, approval decision)
-- Button to copy permalink (for sharing with team)
+**Design principle**: Clear, honest labeling that this is a working prototype, not authoritative guidance
 
 ---
 
-## Approval UI Design Rationale
+## Approval Gate & Feedback
 
-The approval gate is intentionally designed to collect feedback:
+The approval gate collects implicit and explicit feedback:
 
-1. **Comments are required (or strongly encouraged)** — Not optional, because we want to learn how to improve the system
-2. **Approver name + email captured** — For audit trail and to understand who has reviewed what
-3. **Full snapshot stored** — So we can see exactly what the approver saw when they made the decision
-4. **Timestamp in UTC** — For compliance audit trail
-5. **Actions documented** — "presented_for_review", "identity_verified", "snapshot_recorded" — proves the workflow executed correctly
+1. **Decision capture** — Approve or request clarification signals system effectiveness
+2. **Optional comments** — Approver feedback on analysis quality, rule accuracy, reasoning clarity
+3. **Full interaction recorded** — Per **Usage Records** (FirstImplementation.md), every interaction is logged with product, question, rules retrieved, reasoning, and approval outcome
+4. **Later analysis** — Patterns in approver decisions and comments are analyzed separately (via Claude) to identify process improvements and ranking refinements
 
-The comments field becomes a **feedback log** for process refinement. Patterns in approver comments will show:
-- Which analyses need clarification
-- Which rule citations are confusing
-- Whether the reasoning chain is transparent
-- What gaps the approver is concerned about
+This feedback-first approach avoids survey fatigue while capturing honest, contextual feedback about system performance.
 
 ## Technology Stack
 
@@ -223,41 +157,32 @@ approver_email_whitelist = ["@company.com", "@fca.org.uk"]
 
 ## Data Management
 
-### Input Data
-- **Product descriptions**: Text entered by user, not stored (unless saving full audit trail)
-- **Compliance questions**: Text entered by user, not stored
-- **FCA Handbook**: FCA_Handbook_Template_ALL.json (bundled with app, read-only)
-- **Weights configuration**: weights.yaml (bundled with app, read-only)
+**See FirstImplementation.md § Usage Records for complete audit trail and data handling.**
 
-### Output Data
-- **Full audit trails**: JSON export option for each workflow execution
-  - Includes: user input, all node outputs (ProductFeatures, RankedRules, ComplianceAnalysis, ApprovalDecision)
-  - Stored locally on first iteration, cloud storage (S3/GCS) if needed later
-- **Approval decisions**: Stored in SQLite (demo) or cloud database (production)
+### UI-Level
+- Product descriptions and questions: Ephemeral (in-memory during workflow only)
+- Approval decisions and comments: Captured for interaction log
 
-### Privacy/Data Residency
-- No data is stored by default (stateless)
-- Audit trails are export-on-demand
-- FCA data is only the handbook (public info, redistributable)
-- User product descriptions are ephemeral (only in-memory during workflow)
+### Audit Trail (Backend)
+- All interactions logged to `interactions.json` per Usage Records section
+- Includes: product, question, rules retrieved, LLM reasoning, approval decision, comments, timestamp
+- Used for analysis and process refinement; no external sharing
+
+### Privacy
+- No user data stored by default
+- Approval comments analyzed in aggregate only (patterns, not individuals)
+- FCA Handbook data is public, redistributable
 
 ## Success Metrics: What We'll Learn
 
-From internal testing:
-1. **Integration correctness** — Do all nodes execute without errors?
-2. **Data flow** — Does each node's output correctly become the next node's input?
-3. **Semantic search quality** — Are retrieved rules relevant to the product description?
-4. **Claude reasoning** — Is the analysis clear, complete, and well-cited?
-5. **Citation validation** — Do cited rules actually match what the user sees?
-6. **Performance** — How long does the full workflow take? (Target: <30s)
-7. **Edge cases** — What breaks? (missing fields, unusual products, ambiguous questions)
-
-From FCA feedback:
-1. **Usability** — Is the UI clear? Do users understand each section?
-2. **Accuracy** — Are the retrieved rules correct for the product?
-3. **Completeness** — Are all relevant rules retrieved, or are there gaps?
-4. **Reasoning quality** — Is Claude's logic sound and transparent?
-5. **Next steps** — What would make this system production-ready for FCA?
+From interaction logs and approver feedback:
+1. **Semantic search quality** — Are retrieved rules relevant? (signals: approval rate, comments on rule accuracy)
+2. **Reasoning clarity** — Is LLM analysis understandable and well-reasoned? (signals: approval decisions, clarification requests)
+3. **Completeness** — Are all relevant rules retrieved, or are gaps identified? (signals: "missing rule X" in comments)
+4. **False positives** — Are irrelevant rules ranked too high? (signals: approver rejection, comments on noise)
+5. **Performance** — How long does analysis take? (target: <30s)
+6. **Usability** — Do users understand the interface and results? (signals: usage patterns, comment tone)
+7. **Edge cases** — What product types or question phrasings cause issues? (signals: multiple rejections for similar inputs)
 
 ## Roadmap
 
