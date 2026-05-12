@@ -108,7 +108,7 @@ The Tool acts as the entry point and gatekeeper. It performs scope validation, t
 
 **Scope Validation**
 
-Before executing the workflow, the Tool validates that the question concerns the **FCA Handbook specifically** (not PRA Requirements, technical standards, or other FCA documents).
+Before executing the workflow, the Tool validates that the question (taking into account overall context including conversation history) concerns the **FCA Handbook specifically** (not PRA Requirements, technical standards, or other FCA documents).
 
 **Validation logic:**
 - If the question clearly targets FCA Handbook compliance: Harness executes immediately.
@@ -156,6 +156,37 @@ When regulators ask "How did you decide rules A, B, C apply?", this implementati
    - Both `timestamp` and `actions_carried_out` are declared as `required_fields` in the YAML, ensuring they are always captured
 
 Every decision is traceable to a specific YAML node, configuration version, and explicit audit metadata (timestamps, approver identity, actions taken).
+
+## Usage Records
+
+Every interaction with the Harness is recorded for auditability and process improvement.
+
+### Record Structure
+
+Each interaction is appended to `interactions.json`:
+
+```json
+{
+  "timestamp": "ISO-8601",
+  "product_description": "string",
+  "question": "string",
+  "rules_retrieved": [{"id": int, "header": "string", "rank": int, "similarity": float}],
+  "claude_reasoning": "string",
+  "approval_decision": "approved|rejected",
+  "approver_comment": "string",
+  "session_id": "uuid"
+}
+```
+
+### Purposes
+
+**a. Compliance**: Complete audit trail of decisions, rules applied, and approvals. Answers "How was this decision made?"
+
+**b. Feedback**: Analyze interaction patterns (rejected approvals, follow-up questions, rule frequencies) to identify process gaps and embedding quality issues.
+
+### Future Migration
+
+As usage patterns emerge, may migrate to a structured database (Supabase, etc.) for richer querying. JSON format allows straightforward migration without code changes.
 
 ---
 
