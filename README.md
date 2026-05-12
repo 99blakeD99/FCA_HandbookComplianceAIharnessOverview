@@ -87,3 +87,6 @@ The compliance Harness appears as a **named tool** with a focused description th
 
 The LLM reads the Tool description and makes a routing decision. If the question involves FCA, the LLM invokes the Tool. The Tool then validates scope and executes the Harness workflow. Implementation overview is set out in FirstImplementation.md.
 
+## License
+
+This project is licensed under the MIT License. See [opensource.org/licenses/MIT](https://opensource.org/licenses/MIT) for details.
