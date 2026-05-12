@@ -36,69 +36,17 @@ Compliance workflows are audit-intensive. Python code is executable but opaque t
 
 YAML is human-readable, version-controlled, and deterministic. This makes it more accessible to compliance teams. 
 
-### Example YAML configuration: new_product_review Workflow
+### Example: new_product_review Workflow
 
-The following specifies information for the workflow: the crucial point to understand is the **nodes**.
+For a concrete YAML workflow definition and complete action specifications for new_product_review, see **NewProductReviewSpecs.md**.
 
-```yaml
-harness:
-  data_sources:
-    fca_handbook:
-      artifact: "FCA_Handbook_Text_And_Embeddings"
-      version: "2026-Q1"
-      model: "text-embedding-3-large"
-      weighting_config: "weights.yaml"
-  
-  workflows:
-    new_product_review:
-      nodes:
-        - name: extract_features
-          action: parse_markdown
-          input: product_description
-          output: ProductFeatures
-          config: {}
-        
-        - name: retrieve_rules
-          action: semantic_search
-          input:
-            product_features: ProductFeatures
-            question: question
-          output: RankedRules
-          config:
-            Param_top_k: 20
-        
-        - name: analyze_compliance
-          action: claude_reasoning
-          input:
-            product_features: ProductFeatures
-            rules: RankedRules
-          output: ComplianceAnalysis
-          config:
-            Param_tools:
-              - citation_formatter
-              - audit_logger
-            Param_prompt_template: "fca-compliance-analyst.md"
-        
-        - name: human_review
-          action: approval_gate
-          input:
-            analysis: ComplianceAnalysis
-          output:
-            ApprovalDecision:
-              required_fields:
-                - timestamp
-                - actions_carried_out
-          config:
-            Param_required_approval:
-              Param_role: compliance_officer
-              Param_record_identity: true
-```
-
-**Naming convention:** Fields prefixed with `Param_` are configurable parameters defined in the Action Specification. Changing these values will affect behavior (if implemented in Python). Fields without the prefix are structural (node name, action type, input/output declarations).
+The crucial point is the **nodes** structure: each node has a `name`, `action` type, `input` declarations, `output` type, and `config` containing action-specific parameters.
 
 Each node follows the same structure: `name`, `action`, `input` (if applicable), and `config` (containing `Param_*` parameters). Action-specific fields are normalized under `config`, making the structure consistent for the Python execution loop.
 
-Other workflows will in due course include: regulatory_change_analysis, incident_investigation, periodic_audit, etc.
+Future workflows will follow the same pattern. Examples: regulatory_change_analysis, incident_investigation, periodic_audit.
+
+**Naming convention:** Fields prefixed with `Param_` are configurable parameters defined in action specifications. Changing these values affects behavior (if implemented in Python). Fields without the prefix are structural (node name, action type, input/output declarations).
 
 ## Workflow 
 
@@ -124,26 +72,15 @@ Before executing the workflow, the Tool validates that the question (taking into
 
 **Harness Invocation**
 
-When the LLM invokes the Tool, it provides:
-- `product_description` (string): Product details in markdown format
+The Tool receives the following inputs:
+- `product_description` (string): Product details in markdown format, supplied by the user via input field or file upload
 - `question` (string): The compliance question (e.g., "Which FCA rules apply?")
 
-After scope validation passes, the Tool invokes the Harness, which carries out the following steps:
-
-1. **Determines workflow type**: The LLM's question is classified to select the appropriate workflow. For example, "Attached is a summary of a new product we are creating, can you review it against the FCA Handbook?" triggers `new_product_review`. 
-
-2. **Loads YAML workflow** and **Maps inputs**: The workflow definition is loaded from a YAML file. User inputs (`product_description`, `question`) are connected to workflow nodes according to the YAML configuration. In the example workflow, this means:
-   - `product_description` → NODE 1 input
-   - NODE 1 output (`ProductFeatures`) → NODE 2 input
-   - `question` → NODE 2 input
-
-3. **Initializes execution context** and **Executes workflow**: Prepares data sources, action registry, and audit logging, then runs nodes sequentially.
-
-This keeps the Tool invocation simple (product + question) while allowing YAML to define the Harness orchestration. 
+After scope validation passes, the Tool invokes the Harness and determines the appropriate workflow. For example, "Attached is a summary of a new product we are creating, can you review it against the FCA Handbook?" triggers `new_product_review` (currently the only workflow covered, but this is how other workflows would work as well). 
 
 ### Workflow Execution
 
-The nodes set out in the YAML configuration are executed in sequence, with actions as set out in Action Specifications.md.
+Workflow execution is as set out in the YAML and Action Specifications in NewProductReviewSpecs.md.
 
 ## Audit Trail Example
 

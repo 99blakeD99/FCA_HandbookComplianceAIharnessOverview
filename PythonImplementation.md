@@ -1,6 +1,6 @@
 # Python Implementation
 
-This document provides the patterns, interfaces, and concrete implementations needed to build the Compliance Agent Harness in Python. It bridges the YAML workflow specification (FirstImplementation.md) and action contracts (ActionSpecifications.md) with production-ready code.
+This document provides the patterns, interfaces, and concrete implementations needed to build the Compliance Agent Harness in Python. It implements the actions and orchestration patterns specified in NewProductReviewSpecs.md.
 
 ## Architecture Overview
 
@@ -92,7 +92,7 @@ class Action(ABC):
             config: Node configuration from YAML node["config"]. Contains Param_* keys.
         
         Returns:
-            Output object matching the action's output schema (see ActionSpecifications.md)
+            Output object matching the action's output schema (see NewProductReviewSpecs.md)
         
         Raises:
             Subclasses of ActionError with actionable messages
@@ -108,7 +108,7 @@ class Action(ABC):
 
 ## Implementation: ParseMarkdownAction
 
-Extracts structured product information from markdown. See ActionSpecifications.md for the complete contract.
+Extracts structured product information from markdown. See NewProductReviewSpecs.md for the complete contract.
 
 ```python
 import re
@@ -264,7 +264,7 @@ class ParseMarkdownAction(Action):
 
 ## Implementation: SemanticSearchAction
 
-Performs vector similarity search over FCA Handbook embeddings with regulatory weighting. See ActionSpecifications.md and StructuredSearch.md for the complete specification.
+Performs vector similarity search over FCA Handbook embeddings with regulatory weighting. See NewProductReviewSpecs.md and StructuredSearch.md for the complete specification.
 
 ### HandbookIndex Class
 
@@ -1000,7 +1000,7 @@ class TestNewProductReviewWorkflow(unittest.TestCase):
 
 ## Next Steps for Implementers
 
-1. **Implement each action class** with full input validation and error handling per ActionSpecifications.md
+1. **Implement each action class** with full input validation and error handling per NewProductReviewSpecs.md
 2. **Load handbook data** once at startup (not per-query) for performance
 3. **Integrate with Anthropic SDK** for Claude reasoning (use prompt caching for efficiency)
 4. **Add audit logging** to every action with timestamps

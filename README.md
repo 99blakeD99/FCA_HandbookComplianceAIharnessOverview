@@ -14,29 +14,25 @@ These components are put forward as a model for Compliance AI, enabling modifica
 
 To understand the Compliance Agent Harness, read the documents in order:
 
-1. **README.md** (this document) — Conceptual overview of the Harness pattern, design principles, and how it addresses compliance requirements. Implementation-agnostic; suitable for regulators, compliance teams, and architects.
+1. **README.md** (this document). Conceptual overview of the Harness.
 
-2. **EmbeddingModel.md** — Outline of considerations surrounding choice of embedding model.
+2. **EmbeddingModel.md**. Outline of considerations surrounding choice of embedding model.
 
-3. **FirstImplementation.md** — One reference implementation. Uses YAML for workflow specification, Python for execution, and Anthropic Claude for reasoning. Shows YAML-to-Python bridge, ACTION_REGISTRY pattern, prompt caching, and workflow execution. For engineers and implementers. Other implementations could use alternative specification languages or LLM providers.
+3. **FirstImplementation.md**. One reference implementation. 
 
-4. **StructuredSearch.md** — How to rank regulatory search results appropriately. Explains multi-factor weighting (rule type, hierarchy, importance, section authority) and weights.yaml configuration. Foundational to the semantic_search action. For architects, compliance teams, and implementers designing search strategies.
+4. **StructuredSearch.md**. How to rank search results, having regard to the highly structured organisation of codified requirements. Foundational to the semantic_search action. 
 
-5. **NewProductReviewActionSpecs.md** — Workflow definition (YAML) and detailed specifications for each action type (parse_markdown, semantic_search, claude_reasoning, approval_gate) in the new_product_review workflow. Provides the contract that implementations must conform to. Future workflows will have similar spec files. For engineers and auditors.
+5. **NewProductReviewSpecs.md**. Workflow definition (YAML) and detailed specifications for each action type. Future workflows will have similar spec files.
 
-6. **PythonImplementation.md** — Detailed Python implementation patterns (action registry, node execution loop, data flow between nodes, error handling). For engineers building implementations.
+6. **PythonImplementation.md**. Detailed Python implementation patterns.
 
-7. **UIStrategy.md** — Application design strategy for the demonstration implementation. Covers minimal feature set, user flows, approval gate UX, technology stack (Streamlit), and deployment considerations. For product, UX, and engineering teams building the demo application. Also see [UI_mockup.html](https://htmlpreview.github.io/?https://github.com/99blakeD99/ComplianceAIharnessOverview/blob/main/UI_mockup.html) (interactive mockup).
+7. **UIStrategy.md**. Design outline for demo. The Harness will normally be called as part of a bigger system, but a standalone demo will be useful. Also see UI_mockup.html (open in browser).
 
-**FCA_Handbook_Template_PRIN.json** provides a concrete example of the data structure with actual embeddings (Voyage 3-Large and OpenAI text-embedding-3-large models).
-
-## About This Repository
-
-This is a pattern and reference implementation for Compliance AI systems. While applied here to the FCA Handbook, the architecture is designed to accommodate other regulatory codified requirements with minimal modification.
+**FCA_Handbook_Template_PRIN.json**. A concrete unofficial subset of data with two embeddings (Voyage 3-Large and OpenAI text-embedding-3-large models).
 
 ## FCA_Handbook_Text_And_Embeddings
 
-This Harness and Tool depend on **`FCA_Handbook_Text_And_Embeddings`**, a composite artifact combining FCA regulatory text with vector embeddings.
+The Harness will depend on **`FCA_Handbook_Text_And_Embeddings`**, a composite artifact combining FCA regulatory text with vector embeddings (of which FCA_Handbook_Template_PRIN.json is an illustrative subset)
 
 ## Harness as Complement to LLM
 

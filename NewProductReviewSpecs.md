@@ -1,10 +1,76 @@
-## Action Specifications
+# New Product Review Workflow Specification
 
-This document specifies each action type used in Harness workflows. Each action is an atomic step—parse, retrieve, reason, approve. Specifications define inputs, outputs, validation, and error handling, enabling implementers to code against a deterministic contract and auditors to verify compliance. See FirstImplementation.md for YAML workflow examples and context.
+This document specifies the **new_product_review** workflow, which is the first implementation of the Compliance Agent Harness. It includes the YAML workflow definition and detailed specifications for each action type used in this workflow.
+
+The new_product_review workflow handles: product description → feature extraction → rule retrieval → compliance reasoning → human approval.
+
+Other workflows (regulatory_change_analysis, incident_investigation, etc.) will have similar specifications files, following this template.
+
+## Workflow Definition
+
+```yaml
+harness:
+  data_sources:
+    fca_handbook:
+      artifact: "FCA_Handbook_Text_And_Embeddings"
+      version: "2026-Q1"
+      model: "text-embedding-3-large"
+      weighting_config: "weights.yaml"
+  
+  workflows:
+    new_product_review:
+      nodes:
+        - name: extract_features
+          action: parse_markdown
+          input: product_description
+          output: ProductFeatures
+          config: {}
+        
+        - name: retrieve_rules
+          action: semantic_search
+          input:
+            product_features: ProductFeatures
+            question: question
+          output: RankedRules
+          config:
+            Param_top_k: 20
+        
+        - name: analyze_compliance
+          action: claude_reasoning
+          input:
+            product_features: ProductFeatures
+            rules: RankedRules
+          output: ComplianceAnalysis
+          config:
+            Param_tools:
+              - citation_formatter
+              - audit_logger
+            Param_prompt_template: "fca-compliance-analyst.md"
+        
+        - name: human_review
+          action: approval_gate
+          input:
+            analysis: ComplianceAnalysis
+          output:
+            ApprovalDecision:
+              required_fields:
+                - timestamp
+                - actions_carried_out
+          config:
+            Param_required_approval:
+              Param_role: compliance_officer
+              Param_record_identity: true
+```
+
+**Naming convention:** Fields prefixed with `Param_` are configurable parameters defined in the Action Specification below. Changing these values will affect behavior (if implemented in Python). Fields without the prefix are structural (node name, action type, input/output declarations).
+
+Each node follows the same structure: `name`, `action`, `input` (if applicable), and `config` (containing `Param_*` parameters). Action-specific fields are normalized under `config`, making the structure consistent for the Python execution loop.
 
 ---
 
-Each YAML action type is implemented by a Python class that conforms to an exact specification. This ensures auditability: any auditor or implementer can read the spec and verify that the Python code matches it.
+## Action Specifications
+
+Each action type is implemented by a Python class that conforms to an exact specification. This ensures auditability: any auditor or implementer can read the spec and verify that the Python code matches it.
 
 ### parse_markdown
 
@@ -204,4 +270,3 @@ Each YAML action type is implemented by a Python class that conforms to an exact
 - Approval timeout (48h): Return error "Approval pending for >48h. Escalate to {escalation_contact}. Auto-reject recommended."
 - approver_email fails validation: Return error "Approver email invalid or not authorized: {email}"
 - Approver rejects analysis: Store rejection with comments; return ApprovalDecision.approved=false; halt workflow
-

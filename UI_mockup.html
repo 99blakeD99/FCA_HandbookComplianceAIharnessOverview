@@ -301,23 +301,27 @@
         }
         .approval-buttons {
             display: flex;
-            gap: 12px;
+            justify-content: center;
+            margin-bottom: 16px;
         }
         .btn-approve {
             background: #28a745;
             color: white;
-            flex: 1;
+            width: auto;
+            padding: 10px 40px;
         }
         .btn-approve:hover {
             background: #218838;
+            box-shadow: 0 2px 8px rgba(40,167,69,0.3);
         }
-        .btn-reject {
-            background: #ffc107;
-            color: #333;
-            flex: 1;
-        }
-        .btn-reject:hover {
-            background: #e0a800;
+        .approval-note {
+            font-size: 13px;
+            font-weight: 600;
+            color: #666;
+            text-align: center;
+            margin-top: 16px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
         .disabled-state {
             opacity: 0.5;
@@ -419,14 +423,13 @@
 
             <div class="approval-gate">
                 <div class="approval-title">Human Review & Approval</div>
-                <p style="margin-bottom: 12px; font-size: 14px; color: #666;">
+                <p style="margin-bottom: 16px; font-size: 14px; color: #666;">
                     Do these results correctly identify the applicable FCA rules for this product?
                 </p>
                 <div class="approval-buttons">
                     <button class="btn-approve" onclick="approveDecision()">Approve</button>
-                    <button class="btn-reject" onclick="rejectDecision()">Request Clarification</button>
                 </div>
-                <textarea id="commentBox" placeholder="(Optional) Add comments about this analysis..." style="margin-top: 12px; min-height: 80px; display: none;"></textarea>
+                <div class="approval-note">Use the Compliance Question (above) to ask follow-up questions, seek clarification, or provide feedback.</div>
             </div>
         </div>
 
@@ -479,21 +482,8 @@
         }
 
         function approveDecision() {
-            const commentBox = document.getElementById('commentBox');
-            if (commentBox.style.display === 'none') {
-                commentBox.style.display = 'block';
-                commentBox.focus();
-            } else {
-                alert('✓ Analysis approved and recorded.\n\nInteraction logged for system improvement.');
-                clearInputs();
-            }
-        }
-
-        function rejectDecision() {
-            const commentBox = document.getElementById('commentBox');
-            commentBox.style.display = 'block';
-            commentBox.focus();
-            commentBox.placeholder = 'Please describe what needs clarification...';
+            alert('✓ Analysis approved and recorded.\n\nInteraction logged for system improvement.');
+            clearInputs();
         }
     </script>
 </body>
