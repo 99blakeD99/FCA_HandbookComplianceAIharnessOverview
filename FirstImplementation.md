@@ -10,8 +10,6 @@ Following widespread practice, this implementation has the following components:
 
 Anyone reading the YAML can look up the corresponding Action Specification to understand exactly what will occur. 
 
-An auditor wishing to verify that this chain has integrity can simply ask a suitable LLM to verify.
-
 For now, `new_product_review` is the only workflow covered, as a proof of concept; other types (regulatory_change_analysis, incident_investigation...) will be covered.
 
 ## Use of FCA_Handbook_Text_And_Embeddings
