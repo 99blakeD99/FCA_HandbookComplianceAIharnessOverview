@@ -22,7 +22,7 @@ To understand the Compliance Agent Harness, read the documents in order:
 
 4. **StructuredSearch.md** — How to rank regulatory search results appropriately. Explains multi-factor weighting (rule type, hierarchy, importance, section authority) and weights.yaml configuration. Foundational to the semantic_search action. For architects, compliance teams, and implementers designing search strategies.
 
-5. **ActionSpecifications.md** — Detailed specifications for each action type (parse_markdown, semantic_search, claude_reasoning, approval_gate). Provides the contract that implementations must conform to, independent of how the Harness is specified or which LLM is used. For engineers and auditors.
+5. **NewProductReviewActionSpecs.md** — Workflow definition (YAML) and detailed specifications for each action type (parse_markdown, semantic_search, claude_reasoning, approval_gate) in the new_product_review workflow. Provides the contract that implementations must conform to. Future workflows will have similar spec files. For engineers and auditors.
 
 6. **PythonImplementation.md** — Detailed Python implementation patterns (action registry, node execution loop, data flow between nodes, error handling). For engineers building implementations.
 
@@ -90,3 +90,7 @@ The LLM reads the Tool description and makes a routing decision. If the question
 ## License
 
 This project is licensed under the MIT License. See [opensource.org/licenses/MIT](https://opensource.org/licenses/MIT) for details.
+
+## Architecture & Design
+
+Blake Dempster, [JBMD.co.uk](https://jbmd.co.uk)
