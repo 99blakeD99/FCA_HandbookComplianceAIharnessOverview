@@ -4,8 +4,8 @@
 
 Following widespread practice, this implementation has the following components:
 
-- YAML declares *what* should happen
-- Action Specifications define *the contract*
+- YAML describes *what* should happen, using a structure that when a suitable LLM is prompted to develop the code it can understand what to do
+- Action Specifications describe *the inputs, outputs, and behavior* of each action, again using a structure that the LLM can understand
 - Python makes it work. 
 
 Anyone reading the YAML can look up the corresponding Action Specification to understand exactly what will occur. 
