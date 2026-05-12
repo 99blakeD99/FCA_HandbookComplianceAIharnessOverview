@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FCA Handbook AI Interrogation - Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+        }
+        .header {
+            background: linear-gradient(135deg, #0051ba 0%, #003d88 100%);
+            color: white;
+            padding: 30px 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            text-align: center;
+            max-width: 900px;
+            margin: 20px auto 0;
+            border-radius: 8px 8px 0 0;
+        }
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+        .header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        .beta-badge {
+            display: inline-block;
+            background: rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.4);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 16px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-top: 8px;
+        }
+        .wrapper {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            box-shadow: 0 0 20px rgba(0,0,0,0.08);
+            border: 1px solid #e0e0e0;
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            overflow: hidden;
+        }
+        .container {
+            padding: 20px;
+        }
+        .section {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            position: relative;
+            overflow: hidden;
+        }
+        body::before {
+            content: '⚠ MOCKUP - NON-FUNCTIONAL';
+            position: fixed;
+            top: 35px;
+            right: calc((100vw - 900px) / 2 - 70px);
+            width: 300px;
+            padding: 8px 0;
+            background: #ff9800;
+            color: white;
+            text-align: center;
+            font-size: 12px;
+            font-weight: 600;
+            transform: rotate(45deg);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            pointer-events: none;
+            z-index: 100;
+            font-family: Arial, sans-serif;
+            letter-spacing: 0.5px;
+        }
+        .section-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #666;
+            margin-bottom: 16px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .consent-item {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 16px;
+        }
+        .consent-item:last-child {
+            margin-bottom: 0;
+        }
+        .consent-item input[type="checkbox"] {
+            margin-right: 12px;
+            margin-top: 2px;
+            cursor: pointer;
+            width: 18px;
+            height: 18px;
+        }
+        .consent-text {
+            font-size: 14px;
+            line-height: 1.5;
+            color: #555;
+        }
+        .prompt-section {
+            display: flex;
+            flex-direction: column;
+        }
+        .prompt-label {
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #666;
+        }
+        textarea {
+            font-family: inherit;
+            font-size: 14px;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            resize: vertical;
+            min-height: 120px;
+            color: #333;
+        }
+        textarea:focus {
+            outline: none;
+            border-color: #0051ba;
+            box-shadow: 0 0 0 3px rgba(0,81,186,0.1);
+        }
+        .file-upload {
+            margin: 16px 0;
+            padding: 12px;
+            border: 2px dashed #ddd;
+            border-radius: 6px;
+            background: #fafafa;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .file-upload:hover {
+            border-color: #0051ba;
+            background: #f0f7ff;
+        }
+        .file-upload input[type="file"] {
+            display: none;
+        }
+        .file-upload-label {
+            cursor: pointer;
+            font-size: 14px;
+            color: #0051ba;
+            font-weight: 500;
+        }
+        .file-upload-hint {
+            font-size: 12px;
+            color: #999;
+            margin-top: 4px;
+        }
+        .attached-file {
+            margin-top: 8px;
+            padding: 8px 12px;
+            background: #e8f5e9;
+            border: 1px solid #c8e6c9;
+            border-radius: 4px;
+            font-size: 13px;
+            color: #2e7d32;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .remove-file {
+            background: none;
+            border: none;
+            color: #2e7d32;
+            cursor: pointer;
+            padding: 0;
+            font-weight: 600;
+        }
+        .button-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 16px;
+        }
+        button {
+            padding: 10px 24px;
+            font-size: 14px;
+            font-weight: 600;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-submit {
+            background: #0051ba;
+            color: white;
+            flex: 1;
+        }
+        .btn-submit:hover {
+            background: #003d88;
+            box-shadow: 0 2px 8px rgba(0,81,186,0.3);
+        }
+        .btn-submit:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .btn-clear {
+            background: #f0f0f0;
+            color: #333;
+        }
+        .btn-clear:hover {
+            background: #e0e0e0;
+        }
+        .output-section {
+            display: none;
+        }
+        .output-section.active {
+            display: block;
+        }
+        .output-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #28a745;
+        }
+        .status-indicator.processing {
+            background: #ffc107;
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .rules-list {
+            background: #f9f9f9;
+            border-left: 4px solid #0051ba;
+            padding: 12px;
+            margin-bottom: 16px;
+            border-radius: 4px;
+        }
+        .rule-item {
+            margin-bottom: 12px;
+            font-size: 13px;
+        }
+        .rule-item:last-child {
+            margin-bottom: 0;
+        }
+        .rule-header {
+            font-weight: 600;
+            color: #0051ba;
+            margin-bottom: 4px;
+        }
+        .rule-text {
+            color: #666;
+            line-height: 1.5;
+        }
+        .reasoning {
+            background: #f0f7ff;
+            border: 1px solid #dde8f7;
+            padding: 16px;
+            border-radius: 6px;
+            margin-bottom: 16px;
+            font-size: 14px;
+            line-height: 1.6;
+            color: #333;
+        }
+        .approval-gate {
+            background: #fff9e6;
+            border: 1px solid #ffe58f;
+            padding: 16px;
+            border-radius: 6px;
+            margin-bottom: 0;
+        }
+        .approval-title {
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: #333;
+        }
+        .approval-buttons {
+            display: flex;
+            gap: 12px;
+        }
+        .btn-approve {
+            background: #28a745;
+            color: white;
+            flex: 1;
+        }
+        .btn-approve:hover {
+            background: #218838;
+        }
+        .btn-reject {
+            background: #ffc107;
+            color: #333;
+            flex: 1;
+        }
+        .btn-reject:hover {
+            background: #e0a800;
+        }
+        .disabled-state {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+        .footer {
+            text-align: center;
+            font-size: 12px;
+            color: #999;
+            margin-top: 40px;
+            padding-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>FCA Handbook AI Interrogation</h1>
+        <div class="beta-badge">BETA / DEMONSTRATION</div>
+    </div>
+
+    <div class="wrapper">
+    <div class="container">
+        <!-- Consent Section -->
+        <div class="section">
+            <div class="section-title">Consent & Participation</div>
+            <div class="consent-item">
+                <input type="checkbox" id="consent1" checked>
+                <label for="consent1" class="consent-text">
+                    I understand this is a <strong>beta demonstration</strong> version. Do not treat results as authoritative.
+                </label>
+            </div>
+            <div class="consent-item">
+                <input type="checkbox" id="consent2" checked>
+                <label for="consent2" class="consent-text">
+                    I agree that interaction data (product descriptions, questions, and system responses) may be recorded and analyzed for the sole purpose of improving this system. No user data will be stored.
+                </label>
+            </div>
+        </div>
+
+        <!-- Input Section -->
+        <div class="section">
+            <div class="section-title">Product Review Input</div>
+            <div class="prompt-section">
+                <label class="prompt-label">Product Description</label>
+                <textarea id="productInput" placeholder="Describe the product or service (markdown format supported)...">Example: A robo-advisor platform providing algorithmic investment recommendations to retail customers. Features automated portfolio rebalancing, ESG filtering, and fractional share investing.</textarea>
+
+                <div class="file-upload" onclick="document.getElementById('fileInput').click()">
+                    <label for="fileInput" class="file-upload-label">📎 Or attach a markdown file</label>
+                    <div class="file-upload-hint">.md files supported (max 5MB)</div>
+                    <input type="file" id="fileInput" accept=".md,.markdown" onchange="handleFileUpload(event)">
+                </div>
+                <div id="attachedFileBox" style="display: none;"></div>
+
+                <label class="prompt-label" style="margin-top: 16px;">Compliance Question</label>
+                <textarea id="questionInput" placeholder="Ask your compliance question...">Which parts of the FCA Handbook apply to this product?</textarea>
+
+                <div class="button-group">
+                    <button class="btn-submit" onclick="submitAnalysis()">Analyze Compliance</button>
+                    <button class="btn-clear" onclick="clearInputs()">Clear</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Output Section -->
+        <div class="section output-section active" id="outputSection">
+            <div class="section-title">Analysis Results</div>
+
+            <div class="output-header">
+                <div class="status-indicator"></div>
+                <span><strong>Retrieved Rules</strong> (Top 20 matching FCA Handbook rules)</span>
+            </div>
+
+            <div class="rules-list">
+                <div class="rule-item">
+                    <div class="rule-header">PRIN 2.1.1R (Skill, Care and Diligence)</div>
+                    <div class="rule-text">A firm must conduct its business with due skill, care and diligence. This applies to the design and operation of automated advice systems.</div>
+                </div>
+                <div class="rule-item">
+                    <div class="rule-header">COBS 2.1.1R (Treating Customers Fairly)</div>
+                    <div class="rule-text">A firm must act honestly, fairly and professionally in accordance with the best interests of its customer when providing investment services.</div>
+                </div>
+                <div class="rule-item">
+                    <div class="rule-header">COBS 3.1.1R (Conflict of Interest)</div>
+                    <div class="rule-text">A firm must identify conflicts of interest and take reasonable steps to manage them. Algorithmic bias in recommendations must be disclosed.</div>
+                </div>
+                <div class="rule-item">
+                    <div class="rule-header">COBS 6.1.5R (Suitability)</div>
+                    <div class="rule-text">Before providing a personal recommendation, a firm must obtain information about the customer's financial situation and investment objectives.</div>
+                </div>
+                <div class="rule-item">
+                    <div class="rule-header">+ 16 more rules...</div>
+                </div>
+            </div>
+
+            <div class="reasoning">
+                <strong>LLM Reasoning:</strong><br><br>
+                The robo-advisor platform must comply with PRIN 2 (Skill, Care and Diligence) by ensuring algorithmic systems are robust and tested. The platform triggers COBS requirements around suitability (COBS 6) as it provides investment recommendations. Conflict of interest rules (COBS 3) apply if the firm or affiliated parties benefit from specific recommendation outcomes. Fair treatment obligations (COBS 2) require transparent disclosure of how recommendations are generated and any limitations of automated systems. The firm must also consider ICOBS 2 (Information for Customers) to ensure disclosures about algorithm-driven advice are clear and accessible.
+            </div>
+
+            <div class="approval-gate">
+                <div class="approval-title">Human Review & Approval</div>
+                <p style="margin-bottom: 12px; font-size: 14px; color: #666;">
+                    Do these results correctly identify the applicable FCA rules for this product?
+                </p>
+                <div class="approval-buttons">
+                    <button class="btn-approve" onclick="approveDecision()">Approve</button>
+                    <button class="btn-reject" onclick="rejectDecision()">Request Clarification</button>
+                </div>
+                <textarea id="commentBox" placeholder="(Optional) Add comments about this analysis..." style="margin-top: 12px; min-height: 80px; display: none;"></textarea>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>Demo Version | FCA Handbook AI Interrogation | <a href="https://github.com/99blakeD99/ComplianceAIharnessOverview" style="color: #0051ba; text-decoration: none;">View Specification</a></p>
+        </div>
+    </div>
+    </div>
+
+    <script>
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('productInput').value = e.target.result;
+                    showAttachedFile(file.name);
+                };
+                reader.readAsText(file);
+            }
+        }
+
+        function showAttachedFile(fileName) {
+            const box = document.getElementById('attachedFileBox');
+            box.innerHTML = `<div class="attached-file">
+                <span>✓ ${fileName}</span>
+                <button class="remove-file" onclick="removeFile()">✕</button>
+            </div>`;
+            box.style.display = 'block';
+        }
+
+        function removeFile() {
+            document.getElementById('fileInput').value = '';
+            document.getElementById('attachedFileBox').style.display = 'none';
+            document.getElementById('productInput').value = '';
+        }
+
+        function submitAnalysis() {
+            const outputSection = document.getElementById('outputSection');
+            outputSection.classList.add('active');
+            outputSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        function clearInputs() {
+            document.getElementById('productInput').value = '';
+            document.getElementById('questionInput').value = '';
+            document.getElementById('fileInput').value = '';
+            document.getElementById('attachedFileBox').style.display = 'none';
+            document.getElementById('outputSection').classList.remove('active');
+        }
+
+        function approveDecision() {
+            const commentBox = document.getElementById('commentBox');
+            if (commentBox.style.display === 'none') {
+                commentBox.style.display = 'block';
+                commentBox.focus();
+            } else {
+                alert('✓ Analysis approved and recorded.\n\nInteraction logged for system improvement.');
+                clearInputs();
+            }
+        }
+
+        function rejectDecision() {
+            const commentBox = document.getElementById('commentBox');
+            commentBox.style.display = 'block';
+            commentBox.focus();
+            commentBox.placeholder = 'Please describe what needs clarification...';
+        }
+    </script>
+</body>
+</html>
