@@ -53,7 +53,7 @@ The LLM provides reasoning (intelligence); the Harness provides reliability.
 | Validate retrieved citations against source | Confirm accuracy |
 | Log the reasoning chain | Audit trail |
 
-Note: There are AI-like components in these functions. *Machine Learning* models are used to compute *embeddings*, which are used by applying *cosine similarity* (using the well-proven scipy library). These are deterministic, and will produce reproducible results: the same inputs will produce the same outputs. It is *not* "generative AI".
+Note: There are AI-like components in these functions. *Machine Learning* models are used to compute *embeddings*, which are used by applying *cosine similarity* (using the well-proven numpy library). These are deterministic, and will produce reproducible results: the same inputs will produce the same outputs. It is *not* "generative AI".
 
 **What the LLM Does** 
 
@@ -81,11 +81,7 @@ The guiding design principles are:
 
 ## Harness Invocation
 
-The compliance Harness appears as a **named tool** with a focused description that enables the LLM to route compliance questions appropriately.
-
-**Routing and invocation:**
-
-The LLM reads the Tool description and makes a routing decision. If the question involves FCA, the LLM invokes the Tool. The Tool then validates scope and executes the Harness workflow. Implementation overview is set out in FirstImplementation.md.
+The Harness is exposed as a **named tool** that the LLM invokes for FCA compliance questions. After routing and scope validation, it executes the configured workflow. See FirstImplementation.md for implementation details.
 
 ## License
 
