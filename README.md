@@ -24,7 +24,7 @@ To understand the Compliance Agent Harness, read the documents in order:
 
 4. **StructuredSearch.md**. How to rank search results, having regard to the highly structured organisation of codified requirements. Foundational to the semantic_search action. 
 
-5. **NewProductReviewSpecs.md**. Workflow definition (YAML) and detailed specifications for each action type. Future workflows will have similar spec files.
+5. **GeneralEnquirySpecs.md**. Workflow definition (YAML) and detailed specifications for each action type. Future workflows will have similar spec files.
 
 6. **PythonImplementation.md**. Detailed Python implementation patterns.
 
@@ -59,7 +59,7 @@ Note: There are AI-like components in these functions. *Machine Learning* models
 
 | Task | Why |
 |------|-----|
-| Classify the question to determine workflow type | Understands intent; routes to new_product_review, regulatory_change_analysis, etc. |
+| Classify the question to determine workflow type | Understands intent; routes to general_enquiry, regulatory_change_analysis, etc. |
 | Reason which of the N rules apply to a specific situation | Genuine reasoning—requires interpretation |
 | Explain *why* a rule applies | Interpretation and nuance; LLM's strength |
 | Identify gaps or ambiguities | Flagging edge cases; LLM's strength |

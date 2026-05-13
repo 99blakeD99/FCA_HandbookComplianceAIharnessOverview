@@ -10,7 +10,7 @@ Following widespread practice, this implementation has the following components:
 
 Anyone reading the YAML can look up the corresponding Action Specification to understand exactly what will occur. 
 
-For now, `new_product_review` is the only workflow covered, as a proof of concept; other types (regulatory_change_analysis, incident_investigation...) will be covered.
+For now, `general_enquiry` is the only workflow covered, as a proof of concept; other types (regulatory_change_analysis, incident_investigation...) will be covered.
 
 ## Use of FCA_Handbook_Text_And_Embeddings
 
@@ -34,9 +34,9 @@ Compliance workflows are audit-intensive. Python code is executable but opaque t
 
 YAML is human-readable, version-controlled, and deterministic. This makes it more accessible to compliance teams. 
 
-### Example: new_product_review Workflow
+### Example: general_enquiry Workflow
 
-For a concrete YAML workflow definition and complete action specifications for new_product_review, see **NewProductReviewSpecs.md**.
+For a concrete YAML workflow definition and complete action specifications for general_enquiry, see **GeneralEnquirySpecs.md**.
 
 The crucial point is the **nodes** structure: each node has a `name`, `action` type, `input` declarations, `output` type, and `config` containing action-specific parameters.
 
@@ -74,11 +74,11 @@ The Tool receives the following inputs:
 - `product_description` (string): Product details in markdown format, supplied by the user via input field or file upload
 - `question` (string): The compliance question (e.g., "Which FCA rules apply?")
 
-After scope validation passes, the Tool invokes the Harness and determines the appropriate workflow. For example, "Attached is a summary of a new product we are creating, can you review it against the FCA Handbook?" triggers `new_product_review` (currently the only workflow covered, but this is how other workflows would work as well). 
+After scope validation passes, the Tool invokes the Harness and determines the appropriate workflow. For example, "Attached is a summary of a new product we are creating, can you review it against the FCA Handbook?" triggers `general_enquiry` (currently the only workflow covered, but this is how other workflows would work as well). 
 
 ### Workflow Execution
 
-Workflow execution is as set out in the YAML and Action Specifications in NewProductReviewSpecs.md.
+Workflow execution is as set out in the YAML and Action Specifications in GeneralEnquirySpecs.md.
 
 ## Audit Trail Example
 

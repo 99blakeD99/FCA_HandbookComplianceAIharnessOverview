@@ -1,6 +1,6 @@
 # Python Implementation
 
-This document provides the patterns, interfaces, and concrete implementations needed to build the Compliance Agent Harness in Python. It implements the actions and orchestration patterns specified in NewProductReviewSpecs.md.
+This document provides the patterns, interfaces, and concrete implementations needed to build the Compliance Agent Harness in Python. It implements the actions and orchestration patterns specified in GeneralEnquirySpecs.md.
 
 ## Architecture Overview
 
@@ -92,7 +92,7 @@ class Action(ABC):
             config: Node configuration from YAML node["config"]. Contains Param_* keys.
         
         Returns:
-            Output object matching the action's output schema (see NewProductReviewSpecs.md)
+            Output object matching the action's output schema (see GeneralEnquirySpecs.md)
         
         Raises:
             Subclasses of ActionError with actionable messages
@@ -108,7 +108,7 @@ class Action(ABC):
 
 ## Implementation: ParseMarkdownAction
 
-Extracts structured product information from markdown. See NewProductReviewSpecs.md for the complete contract.
+Extracts structured product information from markdown. See GeneralEnquirySpecs.md for the complete contract.
 
 ```python
 import re
@@ -264,7 +264,7 @@ class ParseMarkdownAction(Action):
 
 ## Implementation: SemanticSearchAction
 
-Performs vector similarity search over FCA Handbook embeddings with regulatory weighting. See NewProductReviewSpecs.md and StructuredSearch.md for the complete specification.
+Performs vector similarity search over FCA Handbook embeddings with regulatory weighting. See GeneralEnquirySpecs.md and StructuredSearch.md for the complete specification.
 
 ### HandbookIndex Class
 
@@ -786,7 +786,7 @@ class ComplianceHarness:
         Execute a workflow end-to-end.
         
         Args:
-            workflow_name: Key from harness.workflows (e.g., 'new_product_review')
+            workflow_name: Key from harness.workflows (e.g., 'general_enquiry')
             user_input: {'product_description': str, 'question': str}
         
         Returns:
@@ -891,7 +891,7 @@ def handle_tool_call(tool_name: str, tool_input: Dict) -> str:
         })
     
     try:
-        result = execute_workflow('new_product_review', product_description, question)
+        result = execute_workflow('general_enquiry', product_description, question)
         return json.dumps(result, default=str)
     except ActionError as e:
         return json.dumps({'error': str(e)})
@@ -904,7 +904,7 @@ def _is_fca_scope(question: str) -> bool:
 
 ## Data Flow Example
 
-For a complete new_product_review workflow:
+For a complete general_enquiry workflow:
 
 ```
 INPUT:
@@ -990,7 +990,7 @@ class TestNewProductReviewWorkflow(unittest.TestCase):
     
     def test_full_workflow_execution(self):
         """Test end-to-end execution with fixture data."""
-        result = execute_workflow('new_product_review',
+        result = execute_workflow('general_enquiry',
             product_description="# TestProduct\n## Features\n- Feature1",
             question="What COBS rules apply?"
         )
@@ -1000,7 +1000,7 @@ class TestNewProductReviewWorkflow(unittest.TestCase):
 
 ## Next Steps for Implementers
 
-1. **Implement each action class** with full input validation and error handling per NewProductReviewSpecs.md
+1. **Implement each action class** with full input validation and error handling per GeneralEnquirySpecs.md
 2. **Load handbook data** once at startup (not per-query) for performance
 3. **Integrate with Anthropic SDK** for Claude reasoning (use prompt caching for efficiency)
 4. **Add audit logging** to every action with timestamps

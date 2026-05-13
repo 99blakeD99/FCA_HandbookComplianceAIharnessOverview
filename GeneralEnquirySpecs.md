@@ -1,8 +1,8 @@
-# New Product Review Workflow Specification
+# General Enquiry Workflow Specification
 
-This document specifies the **new_product_review** workflow, which is the first implementation of the Compliance Agent Harness. It includes the YAML workflow definition and detailed specifications for each action type used in this workflow.
+This document specifies the **general_enquiry** workflow, which is the first implementation of the Compliance Agent Harness. It includes the YAML workflow definition and detailed specifications for each action type used in this workflow.
 
-The new_product_review workflow handles: product description → feature extraction → rule retrieval → compliance reasoning → human approval.
+The general_enquiry workflow handles: product/service description → feature extraction → rule retrieval → compliance reasoning → human approval.
 
 Other workflows (regulatory_change_analysis, incident_investigation, etc.) will have similar specifications files, following this template.
 
@@ -18,7 +18,7 @@ harness:
       weighting_config: "weights.yaml"
   
   workflows:
-    new_product_review:
+    general_enquiry:
       nodes:
         - name: extract_features
           action: parse_markdown
