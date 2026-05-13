@@ -2,13 +2,15 @@
 
 ## Overview
 
-The documents in this repo outline the specifications for two complementary components:
+This repo sets out production-ready specifications for two complementary components:
 
 1. **FCA_Handbook_AI_Enquiry_Harness** — The deterministic orchestration framework.
 
 2. **FCA_Handbook_AI_Enquiry_Tool** — The non-deterministic AI-callable Tool that the Harness exposes. 
 
 These components are put forward as a model for Compliance AI, enabling modification to suit other codified requirements.
+
+These specifications have not been live-tested in a production environment. Implementation should be validated against real-world compliance workflows and regulatory scrutiny before deployment in regulated use.
 
 The specifications are written using conventions which are human readable, but structured such as to enable giving to a suitable LLM with the instruction to create the requisite code. An auditor wishing to verify that this chain has integrity can simply ask a suitable LLM to verify. The functionality in the Harness uses well-proven non-AI methods (regex, numpy for linear algebra, and embeddings HTTP client).
 
@@ -31,8 +33,6 @@ To understand the Compliance Agent Harness, read the documents in order:
 7. **UIStrategy.md**. Design outline for demo. The Harness will normally be called as part of a bigger system, but a standalone demo will be useful. Also see UI_mockup.html (open in browser).
 
 **FCA_Handbook_Template_PRIN.json**. A concrete unofficial subset of data with two embeddings (Voyage 3-Large and OpenAI text-embedding-3-large models).
-
-
 
 ## FCA_Handbook_Text_And_Embeddings
 
