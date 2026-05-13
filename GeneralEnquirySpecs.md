@@ -22,14 +22,14 @@ harness:
       nodes:
         - name: extract_features
           action: parse_markdown
-          input: product_description
-          output: ProductFeatures
+          input: entity_description
+          output: EntityFeatures
           config: {}
         
         - name: retrieve_rules
           action: semantic_search
           input:
-            product_features: ProductFeatures
+            entity_features: EntityFeatures
             question: question
           output: RankedRules
           config:
@@ -38,7 +38,7 @@ harness:
         - name: analyze_compliance
           action: claude_reasoning
           input:
-            product_features: ProductFeatures
+            entity_features: EntityFeatures
             rules: RankedRules
           output: ComplianceAnalysis
           config:
@@ -74,15 +74,15 @@ Each action type is implemented by a Python class that conforms to an exact spec
 
 ### parse_markdown
 
-**Purpose**: Extract and structure product information from markdown-formatted product description.
+**Purpose**: Extract and structure entity information from markdown-formatted entity description.
 
 **Input**: 
-- `product_description` (string): Markdown-formatted text describing a product
+- `entity_description` (string): Markdown-formatted text describing an entity (product, service, business line, etc.)
 
 **Output**: 
-- `ProductFeatures` (object) with fields:
-  - `product_name` (string): Name of the product
-  - `product_type` (string): Category (e.g., "advisory platform", "robo-advisor", "trading system")
+- `EntityFeatures` (object) with fields:
+  - `entity_name` (string): Name of the entity
+  - `entity_type` (string): Category or classification (e.g., "advisory platform", "robo-advisor", "trading system")
   - `features` (array of strings): Key capabilities and features
   - `use_cases` (array of strings): Intended use and client segments
   - `client_interaction` (string): How clients interact (manual, automated, hybrid)
@@ -91,14 +91,14 @@ Each action type is implemented by a Python class that conforms to an exact spec
 
 **Process**:
 1. Parse markdown structure (headings, sections)
-2. Extract product name from first heading (h1)
+2. Extract entity name from first heading (h1)
 3. Search for standard sections: Features, Use Cases, Architecture, Data Handling, Client Interaction
 4. Normalize extracted text (trim whitespace, standardize formatting)
-5. Validate required fields present (product_name, features, use_cases, decision_authority)
+5. Validate required fields present (entity_name, features, use_cases, decision_authority)
 6. Return structured object
 
 **Validation**:
-- `product_name`: Non-empty string, max 200 chars
+- `entity_name`: Non-empty string, max 200 chars
 - `features`: Non-empty array, min 1 item, max 50 items, each item max 500 chars
 - `use_cases`: Non-empty array, min 1 item, max 20 items
 - `decision_authority`: One of: "algorithm", "advisor", "client", "hybrid"
@@ -111,10 +111,10 @@ Each action type is implemented by a Python class that conforms to an exact spec
 
 ### semantic_search
 
-**Purpose**: Query `FCA_Handbook_Text_And_Embeddings` for regulatory rules matching product features and user question. Apply regulatory weighting to rank results by binding authority and relevance.
+**Purpose**: Query `FCA_Handbook_Text_And_Embeddings` for regulatory rules matching entity features and user question. Apply regulatory weighting to rank results by binding authority and relevance.
 
 **Input**:
-- `product_features` (ProductFeatures object): Structured output from parse_markdown
+- `entity_features` (EntityFeatures object): Structured output from parse_markdown
 - `question` (string): User's compliance question (e.g., "Which COBS rules apply?")
 
 **Configuration** (from YAML node config):
@@ -138,7 +138,7 @@ Each action type is implemented by a Python class that conforms to an exact spec
   - `source_version` (string): Version of FCA_Handbook_Text_And_Embeddings used (e.g., "2026-Q1")
 
 **Process**:
-1. Embed product_features using the same embedding model 
+1. Embed entity_features using the same embedding model 
 2. Embed user question using the same model
 3. Combine embeddings: concatenate or weighted average of feature vectors and question vector
 4. Compute cosine similarity between query embedding and rule embeddings from the pre-loaded FCA_Handbook_Text_And_Embeddings (loaded once at harness initialization). See StructuredSearch.md for how similarity scores are then weighted by rule type, hierarchy, importance, and piece authority.
@@ -148,7 +148,7 @@ Each action type is implemented by a Python class that conforms to an exact spec
 8. Return top_k results with full weight_factors breakdown for auditability
 
 **Validation**:
-- `product_features`: Must contain product_type and features (validate ProductFeatures structure)
+- `entity_features`: Must contain entity_type and features (validate EntityFeatures structure)
 - `question`: Non-empty string, min 5 chars, max 1000 chars
 - `Param_top_k`: Integer in range [1, 100], default 20
 - Harness configuration: weights.yaml must be present and valid; if missing or invalid: raise error with config path
@@ -164,7 +164,7 @@ Each action type is implemented by a Python class that conforms to an exact spec
 **Purpose**: Invoke Claude to reason over retrieved rules and product features, producing a compliance analysis with citations and reasoning logs.
 
 **Input**:
-- `product_features` (ProductFeatures object): Structured product information
+- `entity_features` (EntityFeatures object): Structured product information
 - `rules` (RankedRules array): Top-ranked FCA rules from semantic_search
 
 **Configuration** (from YAML node config):
@@ -187,7 +187,7 @@ Each action type is implemented by a Python class that conforms to an exact spec
 
 **Process**:
 1. Load prompt template from file (e.g., `harness/prompts/fca-compliance-analyst.md`)
-2. Construct system prompt by inserting product_features and rules into template
+2. Construct system prompt by inserting entity_features and rules into template
 3. Enable prompt caching for stable context (regulatory hierarchy, citation discipline, standard instructions)
 4. Call Claude API with:
    - System prompt (cached)
@@ -202,7 +202,7 @@ Each action type is implemented by a Python class that conforms to an exact spec
 7. Construct ComplianceAnalysis object with full traceability
 
 **Validation**:
-- `product_features`: Must match ProductFeatures schema
+- `entity_features`: Must match EntityFeatures schema
 - `rules`: Non-empty array of RankedRules
 - `Param_prompt_template`: File must exist and be valid markdown
 - `Param_tools`: Array of valid tool names (must be recognized by Claude API)
