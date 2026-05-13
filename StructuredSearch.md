@@ -49,7 +49,7 @@ The FCA Handbook encodes rule type in the rule_id suffix:
 - Example: `"COBS 2.1.1R 31/07/2023 RP..."` → Extract `R` (Rule, weight 1.0)
 - Example: `"PRIN 1 Annex 1 Non-designated..."` → No suffix found → Assign `U` (Unclassified, weight 0.8)
 
-Implementation: Extract the first occurrence of `[RGED]` from the start of `regulatory_content` using regex pattern `([RGED])\b`. If no match found, assign `'U'` (Unclassified). Then map to weights: `{R: 1.0, G: 0.8, E: 0.6, U: 0.8, D: 0.1}`
+Implementation: Extract the first occurrence of [RGED] from `regulatory_content`. If not found, assign U (Unclassified). Then map to weights: `{R: 1.0, G: 0.8, E: 0.6, U: 0.8, D: 0.1}`
 
 ### Importance Multiplier (Regulatory Criticality)
 
@@ -94,55 +94,46 @@ Different sections of the Handbook have different authority:
 | Technical Standards | 0.9 | Technical guidance |
 | Level 3 Materials | 0.85 | Supporting materials |
 
-## Configuration via weights.yaml
+## Hardcoded Weights (MVP Implementation)
 
-All weights are configurable in `weights.yaml` for auditability without code changes:
+In the MVP implementation, weights are hardcoded in `HandbookIndex.__init__()` for auditability and determinism. This reference section documents the values and rationale.
 
-```yaml
-regulatory_weights:
-  
-  rule_type_weights:
-    RULES:         1.0    # Binding regulatory requirements (explicitly marked)
-    GUIDANCE:      0.8    # Interpretive regulatory guidance (explicitly marked)
-    EVIDENTIAL:    0.6    # Evidential provisions (explicitly marked)
-    UNCLASSIFIED:  0.8    # No explicit type (annexes, definitions, forms)
-    DELETED:       0.1    # Deleted sections (minimal relevance)
+**Current weights:**
 
-  importance_multipliers:
-    high:    1.3       # Scores 7-12: Critical regulatory areas
-    medium:  1.1       # Scores 4-6: Standard regulatory content
-    low:     0.7       # Scores 1-3: Peripheral or supporting content
+```python
+rule_type_weights:
+  RULES:         1.0    # Binding regulatory requirements (explicitly marked)
+  GUIDANCE:      0.8    # Interpretive regulatory guidance (explicitly marked)
+  EVIDENTIAL:    0.6    # Evidential provisions (explicitly marked)
+  UNCLASSIFIED:  0.8    # No explicit type (annexes, definitions, forms)
+  DELETED:       0.1    # Deleted sections (minimal relevance)
 
-  piece_base_weights:
-    "Main Handbook":      1.2
-    "Glossary":           0.95
-    "Instruments":        1.0
-    "Forms":              0.85
-    "Technical Standards": 0.9
-    "Level3Materials":    0.85
+importance_multipliers:
+  high:    1.3       # Scores 7-12: Critical regulatory areas
+  medium:  1.1       # Scores 4-6: Standard regulatory content
+  low:     0.7       # Scores 1-3: Peripheral or supporting content
+
+piece_base_weights:
+  "Main Handbook":      1.2
+  "Glossary":           0.95
+  "Instruments":        1.0
+  "Forms":              0.85
+  "Technical Standards": 0.9
+  "Level3Materials":    0.85
 ```
 
-### Tuning Weights for Different Scenarios
+### Future: Tuning Weights for Different Scenarios
+
+These examples show how weights could be tuned if migrated to external configuration:
 
 **Conservative approach** (strict compliance focus):
-```yaml
-rule_type_weights:
-  RULES:    1.0
-  GUIDANCE: 0.6    # Lower threshold for guidance
-```
+- RULES: 1.0, GUIDANCE: 0.6
 
 **Regulatory change scenario** (heightened scrutiny):
-```yaml
-importance_multipliers:
-  high:   1.5      # Emphasize critical areas more
-  medium: 1.3
-```
+- importance_multipliers: high=1.5, medium=1.3
 
 **Consumer protection focus**:
-```yaml
-importance_multipliers:
-  high: 1.5        # Amplify critical regulatory areas
-```
+- importance_multipliers: high=1.5
 
 ## Integration with semantic_search Action
 
@@ -151,14 +142,14 @@ The `semantic_search` action (FirstImplementation.md) implements structured sear
 ```
 INPUT: Product features + Compliance question
   ↓
-1. Embed question using text-embedding-3-large
+1. Embed question using the same model used in FCA_Handbook_Text_And_Embeddings
 2. Load FCA_Handbook_Text_And_Embeddings (in-memory JSON)
 3. Compute cosine similarity against all rule embeddings
 4. Select top 50 candidates (pre-filtering before weighting)
-5. Load weights.yaml configuration
+5. Apply hardcoded regulatory weights (defined in HandbookIndex.__init__)
 6. For each candidate, compute:
    - rule_type_weight (from rule_id suffix)
-   - hierarchy_multiplier (from metadata)
+   - hierarchy_multiplier (from metadata level)
    - importance_multiplier (from regulatory_score)
    - piece_weight (from piece/section)
    - final_score = similarity × all weights
@@ -169,12 +160,20 @@ OUTPUT: RankedRules (with full weight factor breakdown for auditability)
 
 ## Design Rationale
 
-### Why Weights Are in YAML, Not Code
+### Why Weights Are Hardcoded (MVP) and How to Migrate
 
-1. **Auditability** — Compliance teams and auditors can review weighting decisions without reading code
-2. **Version control** — Git history shows exactly when and why weights changed
-3. **Non-technical tuning** — Compliance officers can adjust weights without engineers
-4. **Transparency** — Every search result includes full weight breakdown for regulatory review
+**Current approach (MVP):** Weights are hardcoded in `HandbookIndex.__init__()` for simplicity and determinism.
+
+**Auditability strategy:**
+1. Weights are documented here in StructuredSearch.md — the authoritative reference
+2. Git history shows exactly when and why weights changed (commit messages document regulatory rationale)
+3. Each search result includes full weight factor breakdown for regulatory review
+4. Code audit: compare HandbookIndex.__init__() against StructuredSearch.md to verify implementation matches spec
+
+**Future improvement:** Move weights to external configuration (weights.yaml or environment variables) for:
+- Non-technical tuning by compliance officers without code changes
+- Dynamic weight switching per-query without restart
+- Better separation of data (weights) from code
 
 ### Why This Matters for Compliance
 

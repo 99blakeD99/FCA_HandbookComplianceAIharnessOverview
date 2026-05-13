@@ -10,7 +10,7 @@ The documents in this repo outline the specifications for two complementary comp
 
 These components are put forward as a model for Compliance AI, enabling modification to suit other codified requirements.
 
-The specifications are written using conventions which are human readable, but structured such as to enable giving to a suitable LLM with the instruction to create the requisite code. An auditor wishing to verify that this chain has integrity can simply ask a suitable LLM to verify. 
+The specifications are written using conventions which are human readable, but structured such as to enable giving to a suitable LLM with the instruction to create the requisite code. An auditor wishing to verify that this chain has integrity can simply ask a suitable LLM to verify. The functionality in the Harness uses well-proven non-AI methods (regex, numpy for linear algebra, and embeddings HTTP client).
 
 ## Getting Started
 
