@@ -32,7 +32,7 @@ To understand the Compliance Agent Harness, read the documents in order:
 
 7. **UIStrategy.md**. Design outline for demo. The Harness will normally be called as part of a bigger system, but a standalone demo will be useful. Also see UI_mockup.html (open in browser).
 
-**FCA_Handbook_Template_PRIN.json**. A concrete unofficial subset of data with two embeddings (Voyage 3-Large and OpenAI text-embedding-3-large models).
+8. **FCA_Handbook_Template_PRIN.json**. A concrete unofficial subset of data with two embeddings (Voyage 3-Large and OpenAI text-embedding-3-large models).
 
 ## FCA_Handbook_Text_And_Embeddings
 
