@@ -26,6 +26,23 @@ Node Execution Loop
 Audit Trail + ComplianceAnalysis Output
 ```
 
+## Deployment Models
+
+The Harness can be deployed in multiple ways. Code patterns differ by model; this document provides examples for **Option 1 (Direct Integration)** but notes how to adapt for others:
+
+| Model | Description | Code Pattern | Tool Definition |
+|-------|-------------|--------------|-----------------|
+| **Option 1: Direct Integration** | Python code calls Claude API directly with Harness as tool | SDK call with tool definition embedded | Hardcoded in Python or config file |
+| **Option 2: Service Deployment** | Harness exposed as REST/GraphQL API; external service invokes it | FastAPI/Flask handler + tool definition in service | Service configuration (YAML/JSON) |
+| **Option 3: Tool Marketplace** | Registered in platform (e.g., Anthropic marketplace); platform manages invocation | Platform-specific integration (may not require custom code) | Platform UI / database |
+
+**Important:** Before generating code for a specific deployment model, clarify:
+- Is the Harness being called directly from Python, or exposed as a service?
+- Where should the tool definition live (hardcoded, config file, platform)?
+- What external systems need to integrate (Claude API, database, etc.)?
+
+The code examples below assume **Option 1** (direct Python integration) but are adaptable.
+
 ## Exception Hierarchy
 
 All actions raise domain-specific exceptions for clear error handling:
@@ -1171,6 +1188,8 @@ def execute_workflow(workflow_name: str, entity_description: str, question: str)
 ```
 
 ### Tool Integration
+
+**Deployment Model:** This section assumes **Option 1 (Direct Integration)** — the Harness is called directly from Python code that invokes Claude. See "Deployment Models" section above for other patterns.
 
 The Harness appears as a Claude tool. This handler validates scope and invokes the harness:
 

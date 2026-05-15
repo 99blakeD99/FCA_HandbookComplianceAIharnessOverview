@@ -168,7 +168,7 @@ Each action type is implemented by a Python class that conforms to an exact spec
 - `rules` (RankedRules array): Top-ranked FCA rules from semantic_search
 
 **Configuration** (from YAML node config):
-- `Param_tools` (array of strings): Tool names available to Claude (e.g., ["citation_formatter", "audit_logger"])
+- `Param_tools` (array of strings): Internal tool names available to Claude (e.g., ["citation_formatter", "audit_logger"])
 - `Param_prompt_template` (string): Path to prompt template file (e.g., "fca-compliance-analyst.md")
 
 **Output**:
@@ -191,8 +191,8 @@ Each action type is implemented by a Python class that conforms to an exact spec
 3. Enable prompt caching for stable context (regulatory hierarchy, citation discipline, standard instructions)
 4. Call Claude API with:
    - System prompt (cached) — includes RankedRules with rule_id fields
-   - User message: question + available tools description
-   - Tools: citation_formatter, audit_logger (to enforce structured output and logging; citation_formatter must extract rule_id)
+   - User message: question + available internal tools description
+   - Internal tools: citation_formatter, audit_logger (to enforce structured output and logging; citation_formatter must extract rule_id)
    - Model: claude model with thinking tokens
    - Temperature: 0.5 (deterministic but thoughtful)
    - Max tokens: 2000

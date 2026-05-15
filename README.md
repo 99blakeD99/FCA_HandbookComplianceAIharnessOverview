@@ -2,17 +2,37 @@
 
 ## Overview
 
-This repo sets out production-ready specifications for two complementary components:
+This repo sets out production-ready specifications for the **FCA Handbook Compliance Agent Harness** — a deterministic orchestration framework containing multiple Workflows. The Harness is invoked as a named tool by external LLMs. Upon invocation, an internal LLM is used: at the beginning to classify the input information and choose the appropriate Workflow; and again at the end for reasoning analysis.
 
-1. **FCA_Handbook_AI_Enquiry_Harness** — The deterministic orchestration framework.
-
-2. **FCA_Handbook_AI_Enquiry_Tool** — The non-deterministic AI-callable Tool that the Harness exposes. 
-
-These components are put forward as a model for Compliance AI, enabling modification to suit other codified requirements.
+This architecture is put forward as a model for Compliance AI, enabling modification to suit other codified requirements.
 
 These specifications have not been live-tested in a production environment. Implementation should be validated against real-world compliance workflows and regulatory scrutiny before deployment in regulated use.
 
-The specifications are written using conventions which are human readable, but structured such as to enable giving to a suitable LLM with the instruction to create the requisite code. An auditor wishing to verify that this chain has integrity can simply ask a suitable LLM to verify. The functionality in the Harness uses well-proven non-AI methods (regex, numpy for linear algebra, and embeddings HTTP client).
+The specifications are written using conventions which are human readable, but structured such as to enable giving to a suitable LLM with the instruction to create the requisite code (you can check this by asking Claude Opus: "read through the repo, then tell me, could you create the code"). Similarly an auditor wishing to verify that the chain from specs to python has integrity can simply ask a suitable LLM. 
+
+The functionality in the Harness uses well-proven non-AI methods (regex, numpy for linear algebra, and embeddings HTTP client).
+
+## Tool Description
+
+This is the Tool Description that appears to external LLMs (e.g., Claude) to enable them to route compliance questions appropriately:
+
+> **FCA Handbook Compliance Enquiry**
+>
+> Use this tool to answer questions about FCA regulatory compliance. The tool:
+> - Retrieves relevant FCA Handbook rules via semantic search with regulatory weighting
+> - Reasons over retrieved rules to determine applicability to specific situations
+> - Provides citations with exact rule text for audit and verification
+> - Returns a formal compliance analysis with identified gaps and confidence scores
+>
+> Invoke when users ask: "Which FCA rules apply to [product/service]?", "Is [situation] compliant?", or similar regulatory questions.
+>
+> Do NOT invoke for non-FCA questions, general financial advice, or questions outside UK financial services regulation.
+
+**Deployment of this Tool Description:**
+
+- **Direct integration:** Include the description in the LLM SDK tool definition (Anthropic, OpenAI, etc.) when calling the LLM
+- **Service deployment:** Store in service code or configuration (YAML/JSON) when exposing the Harness as an API
+- **Tool marketplace:** Register in the platform's tool definition interface (e.g., Anthropic tool marketplace, LLM-specific registries)
 
 ## Getting Started
 
@@ -79,9 +99,7 @@ The guiding design principles are:
 4. **LLM Agnosticism at Core** — The core architecture is LLM-agnostic.
 5. **Embedding Model Agnosticism** - New embedding models can easily be accommodated.
 
-## Harness Invocation
 
-The Harness is exposed as a **named tool** that the LLM invokes for FCA compliance questions. After routing and scope validation, it executes the configured workflow. See FirstImplementation.md for implementation details.
 
 ## License
 
