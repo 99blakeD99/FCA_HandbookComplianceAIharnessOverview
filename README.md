@@ -8,9 +8,7 @@ This architecture is put forward as a template for Compliance AI, enabling modif
 
 These specifications have not been live-tested in a production environment. Implementation should be validated against real-world compliance workflows and regulatory scrutiny before deployment in regulated use.
 
-The specifications are written using conventions which are human readable, but structured such as to enable giving to a suitable LLM with the instruction to create the requisite code (you can check this by asking Claude Opus: "read through the repo, then tell me, could you create the code"). Similarly an auditor wishing to verify that the chain from specs to python has integrity can simply ask a suitable LLM. 
-
-The functionality in the Harness uses well-proven non-AI methods (regex, numpy for linear algebra, and embeddings HTTP client).
+The specifications are written using conventions which are human readable, but structured such as to enable giving to a suitable LLM with the instruction to create the requisite code (you can check this by asking Claude Opus: "read through the repo, then tell me, could you create the code?"). Similarly an auditor wishing to verify that the chain from specs to python has integrity can simply ask a suitable LLM. 
 
 ## Tool Description
 
@@ -60,7 +58,7 @@ The Harness will depend on **`FCA_Handbook_Text_And_Embeddings`**, a composite a
 
 ## Harness as Complement to LLM
 
-The LLM provides reasoning (intelligence); the Harness provides reliability.
+The Harness provides reliability, the LLM provides reasoning (intelligence).
 
 **What the Harness Does** 
 
@@ -73,7 +71,9 @@ The LLM provides reasoning (intelligence); the Harness provides reliability.
 | Validate retrieved citations against source | Confirm accuracy |
 | Log the reasoning chain | Audit trail |
 
-Note: There are AI-like components in these functions. *Machine Learning* models are used to compute *embeddings*, which are used by applying *cosine similarity* (using the well-proven numpy library). These are deterministic, and will produce reproducible results: the same inputs will produce the same outputs. It is *not* "generative AI".
+Note 1: There are AI-like components in these functions. *Machine Learning* models are used to compute *embeddings*, which are used by applying *cosine similarity* (using the well-proven numpy library). These are deterministic, and will produce reproducible results: the same inputs will produce the same outputs. It is *not* "generative AI".
+
+Note 2. Generally the functionality in the Harness uses well-proven non-AI methods (regex, numpy for linear algebra, and embeddings HTTP client).
 
 **What the LLM Does** 
 

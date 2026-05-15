@@ -70,7 +70,7 @@ Before executing the workflow, the Tool validates that the question (taking into
 
 **Harness Invocation**
 
-The Tool receives the following inputs:
+The Harness receives the following inputs:
 - `product_description` (string): Product details in markdown format, supplied by the user via input field or file upload
 - `question` (string): The compliance question (e.g., "Which FCA rules apply?")
 
