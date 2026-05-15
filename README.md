@@ -99,7 +99,9 @@ The guiding design principles are:
 4. **LLM Agnosticism at Core** — The core architecture is LLM-agnostic.
 5. **Embedding Model Agnosticism** - New embedding models can easily be accommodated.
 
+## About this GitHub Repo
 
+This repo contains the reference implementation of the Compliance Agent Harness. It is intentionally stable and not actively soliciting feature contributions. We encourage you to **fork and adapt this implementation** for your specific regulatory requirements.
 
 ## License
 
