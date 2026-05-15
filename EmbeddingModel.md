@@ -1,5 +1,27 @@
 # Embedding Model Selection
 
+## Background: Data Characteristics
+
+The FCA Handbook presents unique embedding challenges due to its structure and diversity:
+
+### Content Distribution
+- Main Handbook: 3,670 records, avg 5,251 chars (complex regulatory text)
+- Glossary: 3,640 records, avg 323 chars (definitions and terms)
+- Instruments: 1,933 records, avg 81 chars (short regulatory instruments)
+- Forms: 812 records, avg 66 chars (brief form descriptions)
+- Technical Standards: 197 records, avg 134 chars (technical guidance)
+- Level 3 Materials: 186 records, avg 104 chars (supporting materials)
+
+### Key Insights
+1. **Extreme Length Variance:** 6 chars to 337,850 chars (Main Handbook entries) — requires context window sufficient for complete rules
+2. **Highly Structured:** 85 modules with consistent regulatory patterns — benefits from models trained on legal/regulatory text
+3. **Hierarchical:** 5 levels with clear regulatory importance scores (1-12) — semantic search must preserve this hierarchy (handled via weighting in StructuredSearch.md)
+4. **Domain-Specific:** Financial services regulatory language — requires embedding model optimized for legal/regulatory domain
+
+These characteristics inform the embedding model choice: a model with longer context windows, legal domain optimization, and proven regulatory text performance is essential.
+
+---
+
 ## Current Choice
 
 **Model**: Voyage AI `voyage-3-large`
