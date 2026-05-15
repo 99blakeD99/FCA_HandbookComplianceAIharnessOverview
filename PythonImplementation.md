@@ -372,19 +372,50 @@ class HandbookIndex:
         Args:
             handbook_path: Path to FCA_Handbook_Text_And_Embeddings JSON file
             weights_config_path: Unused (kept for compatibility). Weights are hardcoded from StructuredSearch.md
+        
+        Raises:
+            DataSourceUnavailableError: If JSON is missing 'fca_handbook' key, has no records, or records lack embeddings
         """
         # Load handbook data
-        with open(handbook_path) as f:
-            data = json.load(f)
+        try:
+            with open(handbook_path) as f:
+                data = json.load(f)
+        except FileNotFoundError:
+            raise DataSourceUnavailableError(
+                f"FCA Handbook JSON file not found at: {handbook_path}\n"
+                f"See README.md § Getting Started (item 8) for expected file format."
+            )
+        except json.JSONDecodeError as e:
+            raise DataSourceUnavailableError(
+                f"FCA Handbook JSON is malformed: {e}\n"
+                f"Ensure the file is valid JSON from FCA_Handbook_Text_And_Embeddings"
+            )
+        
+        # Validate structure
+        if 'fca_handbook' not in data:
+            raise DataSourceUnavailableError(
+                f"FCA Handbook JSON missing 'fca_handbook' key.\n"
+                f"Expected structure: {{'fca_handbook': [{{'rule_id': '...', 'text': '...', 'voyage-3-large_embedding': [...]}}]}}\n"
+                f"See FCA_Handbook_Template_PRIN.json for the correct format."
+            )
         
         self.records = data['fca_handbook']
         
+        if not self.records:
+            raise DataSourceUnavailableError(
+                f"FCA Handbook has no records (fca_handbook array is empty).\n"
+                f"Ensure FCA_Handbook_Text_And_Embeddings contains at least one record."
+            )
+        
         # Detect and load embeddings: try common embedding key names (Voyage or OpenAI)
-        self.embedding_key = self._detect_embedding_key(self.records[0] if self.records else {})
+        self.embedding_key = self._detect_embedding_key(self.records[0])
         self.embeddings = np.array([record[self.embedding_key] for record in self.records])
         
         # Map embedding key to model name for query embedding
         self.embedding_model = self._get_model_name(self.embedding_key)
+        
+        # Validate embedding dimensions match expected model
+        self._validate_embedding_dimensions()
         
         # Default regulatory weights (from StructuredSearch.md § Weighting Factors)
         self.weights = {
@@ -419,7 +450,9 @@ class HandbookIndex:
         """
         Detect which embedding key exists in the record.
         Tries: voyage-3-large_embedding (default), OpenAI_text-embedding-3-large_embedding, or 'embedding'.
-        Raises error if no embedding key found.
+        
+        Raises:
+            DataSourceUnavailableError: If no embedding key found (plain JSON without embeddings)
         """
         # Try keys in order of preference (Voyage 3-Large is default)
         embedding_keys = [
@@ -432,11 +465,24 @@ class HandbookIndex:
             if key in sample_record:
                 return key
         
-        # No embedding key found
+        # No embedding key found — user likely has plain FCA JSON without embeddings
         available_keys = list(sample_record.keys())
         raise DataSourceUnavailableError(
-            f"No embedding key found in FCA Handbook record. "
-            f"Tried: {embedding_keys}. Available keys: {available_keys}"
+            f"ERROR: FCA_Handbook_Text_And_Embeddings is missing vector embeddings.\n\n"
+            f"The Harness requires each record to include a pre-computed embedding vector.\n"
+            f"Your JSON has these keys: {available_keys}\n"
+            f"But is missing one of: {embedding_keys}\n\n"
+            f"SOLUTION: Follow these steps to add embeddings to your JSON:\n"
+            f"1. Read EmbeddingModel.md § 'Action' for instructions on embedding your data\n"
+            f"2. Use an LLM API (Voyage AI or OpenAI) to embed each record\n"
+            f"3. Add the embedding vector to each record with the key: 'voyage-3-large_embedding'\n"
+            f"4. Example record:\n"
+            f"   {{\n"
+            f"     'rule_id': 'COBS 2.1.1R',\n"
+            f"     'text': '...',\n"
+            f"     'voyage-3-large_embedding': [0.123, -0.456, ...]\n"
+            f"   }}\n\n"
+            f"See FCA_Handbook_Template_PRIN.json for a complete example with two embedding models."
         )
     
     def _get_model_name(self, embedding_key: str) -> str:
@@ -447,6 +493,34 @@ class HandbookIndex:
             'embedding': 'text-embedding-3-large'  # Assume OpenAI if key is generic
         }
         return model_map.get(embedding_key, 'text-embedding-3-large')
+    
+    def _validate_embedding_dimensions(self):
+        """
+        Validate that embeddings have correct dimensionality for the detected model.
+        Prevents silent errors if embeddings were generated with a different model.
+        
+        Raises:
+            DataSourceUnavailableError: If embedding dimensions don't match expected model
+        """
+        expected_dims = {
+            'voyage-3-large': 1024,
+            'text-embedding-3-large': 3072
+        }
+        
+        actual_dim = self.embeddings.shape[1] if self.embeddings.ndim == 2 else len(self.embeddings[0])
+        expected_dim = expected_dims.get(self.embedding_model, None)
+        
+        if expected_dim and actual_dim != expected_dim:
+            raise DataSourceUnavailableError(
+                f"Embedding dimensionality mismatch.\n"
+                f"Expected {expected_dim} dimensions for model '{self.embedding_model}'\n"
+                f"but found {actual_dim} dimensions in key '{self.embedding_key}'.\n\n"
+                f"Possible causes:\n"
+                f"- Embeddings were generated with a different model than {self.embedding_model}\n"
+                f"- The wrong embedding key was detected\n\n"
+                f"Solution: Ensure all embeddings use {self.embedding_model} model "
+                f"(see EmbeddingModel.md § 'Current Choice' for details)."
+            )
     
     def search(self, query_embedding, top_k: int = 20) -> List[Dict[str, Any]]:
         """

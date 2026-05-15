@@ -4,7 +4,7 @@
 
 This repo sets out production-ready specifications for the **FCA Handbook Compliance Agent Harness** — a deterministic orchestration framework containing multiple Workflows. The Harness is invoked as a named tool by external LLMs. Upon invocation, an internal LLM is used: at the beginning to classify the input information and choose the appropriate Workflow; and again at the end for reasoning analysis.
 
-This architecture is put forward as a template for Compliance AI, enabling modification to suit other codified requirements. The starting point is a JSON file containing the codified requirements. Essentially this repo sets out a map of what to do with it.
+This architecture is put forward as a template for Compliance AI, enabling modification to suit other codified requirements. The starting point is a JSON file containing the codified requirements (to which as a prerequisite first step appropriate embeddings need to be added). Essentially this repo sets out a map of what to do with it.
 
 These specifications have not been live-tested in a production environment. Implementation should be validated against real-world compliance workflows and regulatory scrutiny before deployment in regulated use.
 
@@ -34,7 +34,7 @@ This is the Tool Description that appears to external LLMs (e.g., Claude) to ena
 
 ## Getting Started
 
-To understand the Compliance Agent Harness, read the documents in order:
+To understand the Compliance Agent Harness architecture, read the documents in order:
 
 1. **README.md** (this document). Conceptual overview of the Harness.
 

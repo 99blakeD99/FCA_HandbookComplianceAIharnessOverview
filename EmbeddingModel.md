@@ -1,6 +1,10 @@
-# Embedding Model Selection
+# Embedding Model 
 
-## Background: Data Characteristics
+## Action
+
+The first step in preparing for this Harness is to ensure that the JSON file containing the codified requirements (in this case the FCA Handbook) is modified to include embeddings (as illustrated in FCA_Handbook_Template_PRIN.json). This can readily be done by instructing a suitable LLM.
+
+## Background: Data Characteristics of FCA Handbook
 
 The FCA Handbook presents unique embedding challenges due to its structure and diversity:
 
