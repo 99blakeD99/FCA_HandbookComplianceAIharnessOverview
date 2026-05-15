@@ -63,9 +63,12 @@ harness:
               Param_record_identity: true
 ```
 
-**Naming convention:** Fields prefixed with `Param_` are configurable parameters defined in the Action Specification below. Changing these values will affect behavior (if implemented in Python). Fields without the prefix are structural (node name, action type, input/output declarations).
+**Naming convention:** 
+- Fields prefixed with `Param_` are configurable parameters defined in the Action Specification below. Changing these values will affect behavior (if implemented in Python). 
+- Fields without the prefix are structural: `name` (node identifier), `action` (action type), `input`/`output` (data flow).
+- The implementation method (regex, embeddings, LLM, etc.) is specified explicitly in each action's **Process** section below for transparency and auditability.
 
-Each node follows the same structure: `name`, `action`, `input` (if applicable), and `config` (containing `Param_*` parameters). Action-specific fields are normalized under `config`, making the structure consistent for the Python execution loop.
+Each node follows the same structure: `name`, `action`, `input` (if applicable), `output`, and `config` (containing `Param_*` parameters). Action-specific fields are normalized under `config`, making the structure consistent for the Python execution loop.
 
 ---
 
@@ -90,8 +93,8 @@ Each action type is implemented by a Python class that conforms to an exact spec
   - `data_handled` (array of strings): Types of sensitive data (e.g., "client portfolios", "trading instructions")
   - `decision_authority` (string): Who makes final decisions (algorithm, advisor, client)
 
-**Process**:
-1. Parse markdown structure (headings, sections)
+**Process** (using regex for markdown parsing only; no LLM):
+1. Parse markdown structure (headings, sections) using regex — extract h1, section headers, list items
 2. Extract entity name from first heading (h1)
 3. Search for standard sections: Features, Use Cases, Architecture, Data Handling, Client Interaction
 4. Normalize extracted text (trim whitespace, standardize formatting)
@@ -138,14 +141,14 @@ Each action type is implemented by a Python class that conforms to an exact spec
   - `final_score` (number): base_similarity × rule_type_weight × hierarchy_multiplier × importance_multiplier × piece_weight
   - `source_version` (string): Version of FCA_Handbook_Text_And_Embeddings used (e.g., "2026-Q1")
 
-**Process**:
+**Process** (embeddings + deterministic weighting only; no LLM):
 1. Concatenate entity_features (name, type, features, use_cases) with user question as plain text
-2. Embed the combined text using the same embedding model (text-embedding-3-large)
-3. Compute cosine similarity between query embedding and rule embeddings from the pre-loaded FCA_Handbook_Text_And_Embeddings (loaded once at harness initialization). See StructuredSearch.md for how similarity scores are then weighted by rule type, hierarchy, importance, and piece authority.
-5. Sort by cosine similarity, select top 50 candidates (filtering step before weighting)
-6. Apply regulatory weighting algorithm to rank candidates by final_score (see StructuredSearch.md for factor definitions and weights.yaml (schema in StructuredSearch.md) configuration)
-7. Sort by final_score descending
-8. Return top_k results with full weight_factors breakdown for auditability
+2. Embed the combined text using the same embedding model as FCA_Handbook_Text_And_Embeddings (detected at runtime)
+3. Compute cosine similarity (numpy dot product) between query embedding and rule embeddings from pre-loaded FCA_Handbook_Text_And_Embeddings
+4. Sort by cosine similarity, select top 50 candidates (deterministic filtering before weighting)
+5. Apply regulatory weighting algorithm (see StructuredSearch.md) to rank candidates by final_score: base_similarity × rule_type_weight × hierarchy_multiplier × importance_multiplier × piece_weight
+6. Sort by final_score descending (deterministic ranking)
+7. Return top_k results with full weight_factors breakdown for auditability
 
 **Validation**:
 - `entity_features`: Must contain entity_type and features (validate EntityFeatures structure)
@@ -185,20 +188,20 @@ Each action type is implemented by a Python class that conforms to an exact spec
     - `confidence_score` (number, 0–1): Model's confidence in the analysis
   - `timestamp` (string): ISO 8601 timestamp of analysis
 
-**Process**:
+**Process** (LLM reasoning with deterministic citation validation):
 1. Load Jinja2 prompt template from file (e.g., `harness/prompts/fca-compliance-analyst.md`)
-2. Construct system prompt by rendering template with entity_features and rules. Rules include rule_id (authoritative identifier) for each RankedRule. Template syntax: `{{ entity_features }}`, `{{ ranked_rules }}`
-3. Enable prompt caching for stable context (regulatory hierarchy, citation discipline, standard instructions)
-4. Call Claude API with:
+2. Construct system prompt by rendering template with entity_features and rules (deterministic). Rules include rule_id (authoritative identifier) for each RankedRule. Template syntax: `{{ entity_features }}`, `{{ ranked_rules }}`
+3. Enable prompt caching for stable context (deterministic optimization)
+4. Call Claude API (LLM reasoning only — do not modify retrieved rules):
    - System prompt (cached) — includes RankedRules with rule_id fields
    - User message: question + available internal tools description
-   - Internal tools: citation_formatter, audit_logger (to enforce structured output and logging; citation_formatter must extract rule_id)
-   - Model: claude model with thinking tokens
+   - Internal tools: citation_formatter, audit_logger (structured output enforcement; citation_formatter must extract rule_id from tool call)
+   - Model: claude-opus with thinking tokens enabled
    - Temperature: 0.5 (deterministic but thoughtful)
    - Max tokens: 2000
-   - Extended thinking: enabled (for complex multi-rule scenarios)
-5. Parse Claude's response to extract reasoning_log, citations (by rule_id), and answer text
-6. Validate each citation by looking up rule_id in the RankedRules array (not regex)
+   - Extended thinking: enabled
+5. Parse Claude's response to extract reasoning_log, citations (by rule_id from tool_use), and answer text
+6. Validate each citation using deterministic rule_id lookup in RankedRules array (not regex, not LLM-based)
 7. Construct ComplianceAnalysis object with full traceability
 
 **Validation**:
@@ -245,19 +248,19 @@ Each action type is implemented by a Python class that conforms to an exact spec
   - `comments` (string): Optional notes from approver
   - `analysis_snapshot` (object): Full ComplianceAnalysis at time of approval (for immutability)
 
-**Process**:
+**Process** (human formal approval only; no LLM):
 1. Format compliance analysis for human review (readable summary + full citations + reasoning log)
 2. Present analysis to user with formal approval request: "Do you formally approve this compliance analysis? (Approve / Reject)"
-3. User provides formal decision:
-   - Choice: Approve or Reject
-   - If record_identity=true: User provides name and email for formal signature
-   - Optional comments field for feedback on analysis quality
-4. Validate approver identity:
-   - If record_identity=true: approver_name and approver_email required (email domain validated)
-   - If record_identity=false: use system/conversation metadata (not recommended for regulated use)
-5. Record decision timestamp (in UTC) at moment of formal approval
-6. Create immutable snapshot: store copy of analysis as it was at approval time
-7. Log formal approval decision (decision, approver identity, timestamp, comments, analysis snapshot) for audit trail
+3. Capture human decision (deterministic):
+   - Choice: Approve or Reject (binary)
+   - If record_identity=true: Capture name and email from user (formal signature)
+   - Optional comments field for feedback
+4. Validate approver identity (deterministic):
+   - If record_identity=true: Require approver_name and approver_email; validate email domain against whitelist
+   - If record_identity=false: Use system/conversation metadata (not recommended for regulated use)
+5. Record decision timestamp in UTC at moment of approval (deterministic)
+6. Create immutable snapshot: store copy of analysis as it was at approval time (deterministic)
+7. Log formal approval decision for audit trail (deterministic)
 8. Return ApprovalDecision object
 
 **Validation**:
