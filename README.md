@@ -2,13 +2,15 @@
 
 ## Overview
 
-This repo sets out production-ready specifications for the **FCA Handbook Compliance Agent Harness** — a deterministic orchestration framework containing multiple Workflows. The Harness is invoked as a named tool by external LLMs. Upon invocation, an internal LLM is used: at the beginning to classify the input information and choose the appropriate Workflow; and again at the end for reasoning analysis.
+This repo sets out production-ready specifications for the **FCA Handbook Compliance Agent Harness** — a deterministic orchestration framework capable of containing multiple Workflows. The Harness is invoked as a named tool by external LLMs. Upon invocation, an internal LLM is used: at the beginning to classify the input information and choose the appropriate Workflow; and again at the end for reasoning analysis.
+
+The Harness is necessary in order to ensure that the internal LLM actually uses the FCA Handbook rather than the data used in its training (which is very likely to be based on secondary, out-of-date, or unreliable sources).
 
 This architecture is put forward as a template for Compliance AI, enabling modification to suit other codified requirements. The starting point is a JSON file containing the codified requirements (to which as a prerequisite first step appropriate embeddings need to be added). Essentially this repo sets out a map of what to do with it.
 
 These specifications have not been live-tested in a production environment. Implementation should be validated against real-world compliance workflows and regulatory scrutiny before deployment in regulated use.
 
-The specifications are written using conventions which are human readable, but structured such as to enable giving to a suitable LLM with the instruction to create the requisite code (you can check this by asking Claude Opus: "read through the repo, then tell me, could you create the code?"). Similarly an auditor wishing to verify that the chain from specs to python has integrity can simply ask a suitable LLM. 
+The specifications are written using conventions which are human readable, but structured such as to enable giving to a suitable LLM with the instruction to create the requisite code. Similarly an auditor wishing to verify that the chain from specs to python has integrity can simply ask a suitable LLM. 
 
 ## Tool Description
 

@@ -26,10 +26,20 @@ harness:
           output: EntityFeatures
           config: {}
         
+        - name: check_terminology
+          action: glossary_lookup
+          input:
+            entity_features: extract_features
+            question: question
+          output: TerminologyMapped
+          config:
+            Param_glossary_piece: "Glossary"
+        
         - name: retrieve_rules
           action: semantic_search
           input:
             entity_features: extract_features
+            question_terms: check_terminology
             question: question
           output: RankedRules
           config:
@@ -113,13 +123,70 @@ Each action type is implemented by a Python class that conforms to an exact spec
 - Missing required fields: Return error "Missing required field: {field_name}"
 - Field validation fails: Return error "Invalid value for {field_name}: {reason}"
 
+### glossary_lookup
+
+**Purpose**: Map user question terminology to FCA Handbook canonical terms via the FCA Glossary. Handles terminology mismatches where user's language differs from regulatory language (e.g., "money handling" → "cash", "deposit" → "advance payment"). Improves semantic search recall on user phrasing that does not directly match handbook terminology.
+
+**Input**:
+- `entity_features` (EntityFeatures object): Structured product information
+- `question` (string): User's compliance question
+
+**Configuration** (from YAML node config):
+- `Param_glossary_piece` (string): FCA Handbook piece containing glossary definitions (fixed: "Glossary")
+
+**Output**:
+- `TerminologyMapped` (object) with fields:
+  - `mapped_terms` (array of objects): For each term found in FCA Glossary:
+    - `user_term` (string): Original term from user question or entity_features (e.g., "bitcoin")
+    - `canonical_term` (string): FCA Glossary canonical entry (e.g., "Digital Currencies")
+    - `glossary_entry` (string): Verbatim definition from FCA Glossary
+  - `unmapped_terms` (array of strings): Terms not found in FCA Glossary (user's original phrasing)
+  - `all_search_terms` (array of strings): Union of unmapped_terms and canonical_terms (used by semantic_search)
+
+**Process** (deterministic FCA Glossary lookup; no LLM):
+1. Extract key noun phrases from question and entity_features (capitalized terms, multi-word phrases)
+2. For each term, search FCA Glossary (Glossary piece from FCA_Handbook_Text_And_Embeddings) using **hierarchical matching strategy**:
+   - **Stage 1: Exact match** — Check for exact term match in glossary (case-insensitive)
+   - **Stage 2: Prefix match** — If exact fails, check for glossary entries starting with the term
+   - **Stage 3: Fuzzy semantic match** — If prefix fails, embed the term and compute cosine similarity against pre-computed glossary embeddings; return match if similarity > 0.7 threshold
+3. If any stage finds a match: record canonical term and glossary definition; do not proceed to later stages
+4. If **no match found in any stage**: add term to unmapped_terms (pass through unchanged); term not covered in FCA Glossary
+5. Compile all_search_terms: both mapped canonical terms and unmapped user terms
+6. Return TerminologyMapped object
+
+**Fallback behavior when term not found in glossary:**
+- No error is raised; unmapped term is included in all_search_terms
+- semantic_search receives the original term as-is (no enrichment from glossary)
+- Search proceeds with full original question + unmapped term (graceful degradation)
+- This preserves coverage for regulatory language that may not be in the glossary
+
+**Validation**:
+- `entity_features`: Must match EntityFeatures schema
+- `question`: Non-empty string, min 5 chars, max 1000 chars
+- FCA Glossary: Must be available in FCA_Handbook_Text_And_Embeddings
+
+**Error Handling**:
+- FCA Glossary unavailable: Return error "FCA Handbook Glossary not available. Unable to perform terminology mapping."
+- No terms extracted: Return TerminologyMapped with empty mapped_terms and all unmapped (not an error—semantic_search proceeds with original terms)
+- Glossary lookup fails (data corruption): Return error "Error querying FCA Glossary. Check FCA_Handbook_Text_And_Embeddings integrity."
+
+**Notes**:
+- Unmapped terms (not found in FCA Glossary) are passed to semantic_search unchanged as fallback
+- This node does not modify the user's question—it enriches it with canonical alternatives
+- Glossary matching is deterministic and auditable; no LLM involved
+- **Matching strategy rationale**: Exact/prefix are fast (O(n) lookup); fuzzy adds semantic understanding (e.g., "bitcoin" → "Digital Currencies") at cost of 1 embedding API call per unfound term
+- **Threshold for fuzzy match**: 0.7 cosine similarity (tunable per deployment); matches must exceed threshold to be considered valid
+- **API calls**: Fuzzy matching may call embedding API if exact/prefix fail; credentials (VOYAGE_API_KEY or OPENAI_API_KEY) must be configured
+- **Glossary completeness assumption**: Glossary is expected to cover most FCA Handbook terminology; not being in glossary does not mean term is invalid, only that it requires semantic search enrichment
+
 ### semantic_search
 
-**Purpose**: Query `FCA_Handbook_Text_And_Embeddings` for regulatory rules matching entity features and user question. Apply regulatory weighting to rank results by binding authority and relevance.
+**Purpose**: Query `FCA_Handbook_Text_And_Embeddings` for regulatory rules matching entity features and question terminology. Apply regulatory weighting to rank results by binding authority and relevance. Uses FCA Glossary-mapped terminology (from glossary_lookup) alongside user's original question to improve recall on terminology mismatches.
 
 **Input**:
 - `entity_features` (EntityFeatures object): Structured output from parse_markdown
 - `question` (string): User's compliance question (e.g., "Which COBS rules apply?")
+- `question_terms` (TerminologyMapped object): Mapped FCA Glossary terms from glossary_lookup node
 
 **Configuration** (from YAML node config):
 - `Param_top_k` (integer): Number of results to return (default 20, range 1–100)
@@ -142,13 +209,14 @@ Each action type is implemented by a Python class that conforms to an exact spec
   - `source_version` (string): Version of FCA_Handbook_Text_And_Embeddings used (e.g., "2026-Q1")
 
 **Process** (embeddings + deterministic weighting only; no LLM):
-1. Concatenate entity_features (name, type, features, use_cases) with user question as plain text
-2. Embed the combined text using the same embedding model as FCA_Handbook_Text_And_Embeddings (detected at runtime)
-3. Compute cosine similarity (numpy dot product) between query embedding and rule embeddings from pre-loaded FCA_Handbook_Text_And_Embeddings
-4. Sort by cosine similarity, select top 50 candidates (deterministic filtering before weighting)
-5. Apply regulatory weighting algorithm (see StructuredSearch.md) to rank candidates by final_score: base_similarity × rule_type_weight × hierarchy_multiplier × importance_multiplier × piece_weight
-6. Sort by final_score descending (deterministic ranking)
-7. Return top_k results with full weight_factors breakdown for auditability
+1. Extract search terms: Combine user's original question with all_search_terms from question_terms (mapped FCA Glossary terms + unmapped fallback terms)
+2. Concatenate entity_features (name, type, features, use_cases) with enriched question text (user question + mapped glossary terms)
+3. Embed the combined text using the same embedding model as FCA_Handbook_Text_And_Embeddings (detected at runtime)
+4. Compute cosine similarity (numpy dot product) between query embedding and rule embeddings from pre-loaded FCA_Handbook_Text_And_Embeddings
+5. Sort by cosine similarity, select top 50 candidates (deterministic filtering before weighting)
+6. Apply regulatory weighting algorithm (see StructuredSearch.md) to rank candidates by final_score: base_similarity × rule_type_weight × hierarchy_multiplier × importance_multiplier × piece_weight
+7. Sort by final_score descending (deterministic ranking)
+8. Return top_k results with full weight_factors breakdown for auditability
 
 **Validation**:
 - `entity_features`: Must contain entity_type and features (validate EntityFeatures structure)

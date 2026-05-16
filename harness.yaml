@@ -1,0 +1,69 @@
+# FCA Handbook Compliance Agent Harness Configuration
+# This file defines data sources and workflows for the compliance harness.
+# See GeneralEnquirySpecs.md for the complete action specification.
+
+harness:
+  data_sources:
+    fca_handbook:
+      artifact: "FCA_Handbook_Text_And_Embeddings"
+      version: "2026-Q1"
+      model: "text-embedding-3-large"
+      # Note: embedding_model can be "text-embedding-3-large" (OpenAI) or "voyage-3-large" (Voyage AI)
+      # See EmbeddingModel.md for model selection rationale
+      weighting_config: "weights.yaml"
+
+  workflows:
+    general_enquiry:
+      description: "Analyze FCA Handbook compliance for a product or service"
+      nodes:
+        - name: extract_features
+          action: parse_markdown
+          input: entity_description
+          output: EntityFeatures
+          config: {}
+
+        - name: check_terminology
+          action: glossary_lookup
+          input:
+            entity_features: extract_features
+            question: question
+          output: TerminologyMapped
+          config:
+            Param_glossary_piece: "Glossary"
+
+        - name: retrieve_rules
+          action: semantic_search
+          input:
+            entity_features: extract_features
+            question_terms: check_terminology
+            question: question
+          output: RankedRules
+          config:
+            Param_top_k: 20
+            Param_source_version: "2026-Q1"
+
+        - name: analyze_compliance
+          action: claude_reasoning
+          input:
+            entity_features: extract_features
+            rules: retrieve_rules
+          output: ComplianceAnalysis
+          config:
+            Param_tools:
+              - citation_formatter
+              - audit_logger
+            Param_prompt_template: "fca-compliance-analyst.md"
+
+        - name: human_review
+          action: approval_gate
+          input:
+            analysis: analyze_compliance
+          output:
+            ApprovalDecision:
+              required_fields:
+                - timestamp
+                - actions_carried_out
+          config:
+            Param_required_approval:
+              Param_role: compliance_officer
+              Param_record_identity: true
