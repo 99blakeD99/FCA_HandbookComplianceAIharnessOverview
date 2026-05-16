@@ -34,6 +34,8 @@ Compliance workflows are audit-intensive. Python code is executable but opaque t
 
 YAML is human-readable, version-controlled, and deterministic. This makes it more accessible to compliance teams. 
 
+Reading the YAML does require some technical skill, but the overall effect is to avoid "black-box" opacity.
+
 ### Example: general_enquiry Workflow
 
 For a concrete YAML workflow definition and complete action specifications for general_enquiry, see **GeneralEnquirySpecs.md**.

@@ -14,7 +14,7 @@ harness:
     fca_handbook:
       artifact: "FCA_Handbook_Text_And_Embeddings"
       version: "2026-Q1"
-      model: "text-embedding-3-large"
+      model: "voyage-3-large"
       weighting_config: "weights.yaml (schema in StructuredSearch.md)"
   
   workflows:
