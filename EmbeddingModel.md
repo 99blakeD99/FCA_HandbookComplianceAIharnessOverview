@@ -46,9 +46,9 @@ These characteristics inform the embedding model choice: a model with longer con
 
 ### Implementation and API Key
 
-Implementation has two components:
+Implementation has two components, both of which require an API key:
 
-1. One-Off. The JSON containing the codified requirements (the FCA Handbook) needs to be supplemented by the Embeddings. This is easily done by instructing a suitable LLM such as Claude to do it. An API key will be required.
+1. One-Off. The JSON containing the codified requirements (the FCA Handbook) needs to be supplemented by the Embeddings. This is easily done by instructing a suitable LLM such as Claude to do it. 
 
 2. Per User Question (after passing entry point validation). The User Question has to be embedded with the same Embedding model (voyage-3-large). This is foundational: otherwise the Question and the semantic search will be at cross-purposes.
 
