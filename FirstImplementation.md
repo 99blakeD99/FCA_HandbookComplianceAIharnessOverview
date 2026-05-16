@@ -48,36 +48,6 @@ Future workflows will follow the same pattern. Examples: regulatory_change_analy
 
 ## Workflow 
 
-### Tool: Scope Validation and Harness Invocation
-
-The Tool acts as the entry point and gatekeeper. It performs scope validation, then invokes the Harness where appropriate.
-
-**Scope Validation**
-
-Before executing the workflow, the Tool validates that the question (taking into account overall context including conversation history) concerns the **FCA Handbook specifically** (not PRA Requirements, technical standards, or other FCA documents).
-
-**Validation logic:**
-- If the question clearly targets FCA Handbook compliance: Harness executes immediately.
-- If scope is ambiguous: Tool asks "Do you mean compliance with the **FCA Handbook**?" and only invokes the Harness if the answer is yes.
-- If question is out of scope: Tool clarifies what it handles and does not invoke the Harness.
-
-**Example:**
-- User: "What are the FCA requirements for algorithmic advice?"
-- LLM recognizes "FCA" and invokes the Tool
-- Tool validates: scope is ambiguous, asks for clarification
-- User: "Yes, FCA Handbook rules for algorithmic advice."
-- Validation passes; Tool invokes Harness: retrieves rules, invokes LLM reasoning, returns auditable citations.
-
-**Harness Invocation**
-
-The Harness receives the following inputs:
-- `product_description` (string): Product details in markdown format, supplied by the user via input field or file upload
-- `question` (string): The compliance question (e.g., "Which FCA rules apply?")
-
-After scope validation passes, the Tool invokes the Harness and determines the appropriate workflow. For example, "Attached is a summary of a new product we are creating, can you review it against the FCA Handbook?" triggers `general_enquiry` (currently the only workflow covered, but this is how other workflows would work as well). 
-
-### Workflow Execution
-
 Workflow execution is as set out in the YAML and Action Specifications in GeneralEnquirySpecs.md.
 
 ## Audit Trail Example

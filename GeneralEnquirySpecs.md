@@ -6,6 +6,28 @@ The general_enquiry workflow handles: product/service description → feature ex
 
 Other workflows (regulatory_change_analysis, incident_investigation, etc.) will have similar specifications files, following this template.
 
+## Entry Point Validation
+
+The `entry_point` layer acts as gatekeeper before workflow execution. It validates that the question concerns FCA Handbook compliance specifically (not PRA Requirements, technical standards, or other FCA documents).
+
+**Input:**
+- `question` (string): User's compliance question, with conversation context
+
+**Process (deterministic):**
+1. Analyze question to determine scope
+2. If scope is clear (mentions "FCA Handbook" explicitly): proceed to workflow
+3. If scope is ambiguous: ask clarifying question "Do you mean compliance with the **FCA Handbook**?"
+4. If scope is out-of-bounds (e.g., "What's the best investment strategy?"): reject with explanation
+
+**Output:**
+- If validated: proceed to workflow execution
+- If invalid: return explanation of scope and do not invoke harness
+
+**Configuration:**
+- `Param_require_explicit_scope` (boolean, default true): If true, ambiguous questions are rejected unless user explicitly confirms FCA Handbook scope. If false, ambiguous questions proceed to workflow.
+
+**Note:** Entry point validation may vary by workflow. Some workflows may accept broader scope; this specification applies to general_enquiry.
+
 ## Workflow Definition
 
 ```yaml
@@ -16,6 +38,10 @@ harness:
       version: "2026-Q1"
       model: "text-embedding-3-large"
       weighting_config: "weights.yaml (schema in StructuredSearch.md)"
+  
+  entry_point:
+    config:
+      Param_require_explicit_scope: true
   
   workflows:
     general_enquiry:
