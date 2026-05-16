@@ -105,7 +105,11 @@ The guiding design principles are:
 
 ## About this GitHub Repo
 
-This repo contains the reference implementation of the Compliance Agent Harness. It is intentionally stable and not actively soliciting feature contributions. We encourage you to **fork and adapt this implementation** for your specific regulatory requirements.
+This repo contains the reference implementation of the Compliance Agent Harness. 
+
+If you have questions, talking points, ideas, experiences, feedback: please open a GitHub Issue. 
+
+We encourage you to **fork and adapt this implementation** for your specific regulatory requirements.
 
 ## License
 
