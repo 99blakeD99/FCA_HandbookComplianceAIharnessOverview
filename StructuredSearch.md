@@ -1,5 +1,9 @@
 # Structured Search: Regulatory Weighting for Compliance Queries
 
+## Prior Action
+
+Prior to Structured Search, the glossary_lookup node will have been executed. This maps the user question terminology to FCA Handbook canonical terms via the FCA Glossary.
+
 ## Problem: Why Standard Embeddings Aren't Enough
 
 Vector embeddings excel at semantic similarity, but they treat all matches equally. For regulatory compliance, this creates a critical problem:

@@ -54,6 +54,8 @@ To understand the Compliance Agent Harness architecture, read the documents in o
 
 8. **FCA_Handbook_Template_PRIN.json**. A concrete unofficial subset of data with two embeddings (Voyage 3-Large and OpenAI text-embedding-3-large models).
 
+9. **Status.md**. Outstanding issues which need design decisions before coding. Some will be resolved as feedback emerges; others are decisions for those forking the repo for their own implementation.
+
 ## FCA_Handbook_Text_And_Embeddings
 
 The Harness will depend on **`FCA_Handbook_Text_And_Embeddings`**, a composite artifact combining FCA regulatory text with vector embeddings (of which FCA_Handbook_Template_PRIN.json is an illustrative subset)
