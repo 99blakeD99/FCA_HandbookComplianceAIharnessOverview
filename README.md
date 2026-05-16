@@ -2,7 +2,7 @@
 
 ## Overview
 
-This repo sets out production-ready specifications for the **FCA Handbook Compliance Agent Harness** — a deterministic orchestration framework capable of containing multiple Workflows. The Harness is invoked as a named tool by external LLMs. Upon invocation, an internal LLM is used: at the beginning to classify the input information and choose the appropriate Workflow; and again at the end for reasoning analysis.
+This repo sets out specifications for the **FCA Handbook Compliance Agent Harness** — a deterministic orchestration framework capable of containing multiple Workflows. The Harness is invoked as a named tool by external LLMs. Upon invocation, an internal LLM is used: at the beginning to classify the input information and choose the appropriate Workflow; and again at the end for reasoning analysis.
 
 The Harness is necessary in order to ensure that the internal LLM actually uses the FCA Handbook rather than the data used in its training (which is very likely to be based on secondary, out-of-date, or unreliable sources).
 
