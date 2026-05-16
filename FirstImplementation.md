@@ -104,6 +104,16 @@ This implementation departs from LLM agnosticism to leverage useful Claude featu
 - **Prompt caching**: Stable context (regulatory hierarchy, citation discipline, standard prompts) is cached on first use.
 - **Thinking tokens** (Later Claude LLMs needed): Enabled via cached prompts to reason through compliance decisions.
 
+### LLM Used in First Implementation
+
+The harness architecture is LLM-agnostic (see README.md § Design), but **this first implementation uses Claude** for the reasoning layer:
+
+- **External invocation**: Can be Claude, any other LLM, or direct Python API call (architecture is LLM-agnostic)
+- **Internal reasoning** (this implementation): Uses Claude (claude-opus-4-7) via the `claude_reasoning` action
+- **Requirement**: `ANTHROPIC_API_KEY` environment variable must be set when harness runs
+
+Other implementations could substitute a different LLM for the reasoning layer without changing the harness architecture. The deterministic retrieval and weighting layers are truly LLM-agnostic; only the reasoning layer is implementation-specific.
+
 ### Cached Harness Configuration for Repeated Questions
 
 When the LLM calls the Tool, the full Harness configuration is cached on first use, as implemented in Python:

@@ -44,6 +44,14 @@ These characteristics inform the embedding model choice: a model with longer con
 
 6. **Cost-Effective**: $0.18/1M tokens vs $0.13 for OpenAI = minimal cost increase (~$0.05 more for full handbook) for substantially better legal domain performance.
 
+### Implementation and API Key
+
+Implementation has two components:
+
+1. One-Off. The JSON containing the codified requirements (the FCA Handbook) needs to be supplemented by the Embeddings. This is easily done by instructing a suitable LLM such as Claude to do it. An API key will be required.
+
+2. Per User Question (after passing entry point validation). The User Question has to be embedded with the same Embedding model (voyage-3-large). This is foundational: otherwise the Question and the semantic search will be at cross-purposes.
+
 ### Previous Model
 
 **OpenAI `text-embedding-3-large`** was chosen historically without domain-specific evaluation. It performs well for general-purpose retrieval but is not optimized for legal/regulatory text. Recent research (2025-2026) revealed legal domain-specific models significantly outperform general-purpose models on compliance document retrieval.

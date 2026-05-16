@@ -6,28 +6,6 @@ The general_enquiry workflow handles: product/service description → feature ex
 
 Other workflows (regulatory_change_analysis, incident_investigation, etc.) will have similar specifications files, following this template.
 
-## Entry Point Validation
-
-The `entry_point` layer acts as gatekeeper before workflow execution. It validates that the question concerns FCA Handbook compliance specifically (not PRA Requirements, technical standards, or other FCA documents).
-
-**Input:**
-- `question` (string): User's compliance question, with conversation context
-
-**Process (deterministic):**
-1. Analyze question to determine scope
-2. If scope is clear (mentions "FCA Handbook" explicitly): proceed to workflow
-3. If scope is ambiguous: ask clarifying question "Do you mean compliance with the **FCA Handbook**?"
-4. If scope is out-of-bounds (e.g., "What's the best investment strategy?"): reject with explanation
-
-**Output:**
-- If validated: proceed to workflow execution
-- If invalid: return explanation of scope and do not invoke harness
-
-**Configuration:**
-- `Param_require_explicit_scope` (boolean, default true): If true, ambiguous questions are rejected unless user explicitly confirms FCA Handbook scope. If false, ambiguous questions proceed to workflow.
-
-**Note:** Entry point validation may vary by workflow. Some workflows may accept broader scope; this specification applies to general_enquiry.
-
 ## Workflow Definition
 
 ```yaml
@@ -39,13 +17,16 @@ harness:
       model: "text-embedding-3-large"
       weighting_config: "weights.yaml (schema in StructuredSearch.md)"
   
-  entry_point:
-    config:
-      Param_require_explicit_scope: true
-  
   workflows:
     general_enquiry:
       nodes:
+        - name: validate_scope
+          action: validate_scope
+          input: question
+          output: ScopeValidation
+          config:
+            Param_require_explicit_scope: true
+        
         - name: extract_features
           action: parse_markdown
           input: entity_description
@@ -61,12 +42,18 @@ harness:
           config:
             Param_glossary_piece: "Glossary"
         
+        - name: embed_question
+          action: embed_text
+          input: question
+          output: QuestionEmbedding
+          config: {}
+        
         - name: retrieve_rules
           action: semantic_search
           input:
             entity_features: extract_features
             question_terms: check_terminology
-            question: question
+            question_embedding: embed_question
           output: RankedRules
           config:
             Param_top_k: 20
@@ -111,6 +98,40 @@ Each node follows the same structure: `name`, `action`, `input` (if applicable),
 ## Action Specifications
 
 Each action type is implemented by a Python class that conforms to an exact specification. This ensures auditability: any auditor or implementer can read the spec and verify that the Python code matches it.
+
+### validate_scope
+
+**Purpose**: Validate that the user question concerns FCA Handbook compliance specifically (not PRA Requirements, technical standards, or other FCA documents). Acts as gatekeeper before workflow execution.
+
+**Input**:
+- `question` (string): User's compliance question, with conversation context
+
+**Output**:
+- `ScopeValidation` (object) with fields:
+  - `valid` (boolean): Whether question passes scope validation
+  - `reason` (string): Explanation (e.g., "Scope is clear and valid" or "Question out of scope: asks about investment strategy, not FCA Handbook compliance")
+
+**Configuration** (from YAML node config):
+- `Param_require_explicit_scope` (boolean, default true): If true, ambiguous questions are rejected unless user explicitly confirms FCA Handbook scope. If false, ambiguous questions proceed.
+
+**Process** (deterministic scope checking; no LLM):
+1. Analyze question to determine scope
+2. If scope is clear (mentions "FCA Handbook" explicitly): valid = true
+3. If scope is ambiguous: 
+   - If Param_require_explicit_scope is true: ask clarifying question "Do you mean compliance with the **FCA Handbook**?" and wait for confirmation
+   - If false: valid = true (proceed with ambiguous scope)
+4. If scope is out-of-bounds (e.g., "What's the best investment strategy?"): valid = false, reason explains what harness covers
+
+**Validation**:
+- `question`: Non-empty string, min 5 chars, max 1000 chars
+
+**Error Handling**:
+- Scope validation failure: Return ScopeValidation with valid=false and explanation; do not proceed to subsequent nodes
+- Ambiguous scope + Param_require_explicit_scope=true: Prompt user for clarification; if no confirmation received, reject with valid=false
+
+**Notes**:
+- Scope validation may vary by workflow. Some workflows may accept broader scope; this specification applies to general_enquiry only.
+- Deterministic and auditable; no LLM involved in scope checking.
 
 ### parse_markdown
 
@@ -205,13 +226,47 @@ Each action type is implemented by a Python class that conforms to an exact spec
 - **API calls**: Fuzzy matching may call embedding API if exact/prefix fail; credentials (VOYAGE_API_KEY or OPENAI_API_KEY) must be configured
 - **Glossary completeness assumption**: Glossary is expected to cover most FCA Handbook terminology; not being in glossary does not mean term is invalid, only that it requires semantic search enrichment
 
+### embed_text
+
+**Purpose**: Embed the user's compliance question using the same embedding model as FCA_Handbook_Text_And_Embeddings. This is foundational: embeddings from different models are incompatible and will produce meaningless search results.
+
+**Input**:
+- `question` (string): User's compliance question
+
+**Output**:
+- `QuestionEmbedding` (vector): Embedded question vector (dimensionality matches handbook embeddings)
+
+**Configuration** (from YAML node config):
+- None (uses embedding model from harness data_sources.fca_handbook.model)
+
+**Process** (deterministic embedding only; no LLM):
+1. Detect embedding model from harness configuration (voyag-3-large or text-embedding-3-large)
+2. Call embedding API with question text
+3. Return embedding vector
+4. Embedding vector is passed to semantic_search for cosine similarity computation
+
+**Validation**:
+- `question`: Non-empty string, max 1000 chars
+- Embedding model configured and available in harness
+
+**Error Handling**:
+- Embedding API unavailable: Return error "Embedding service unavailable. Check API credentials (VOYAGE_API_KEY or OPENAI_API_KEY) and network connectivity."
+- Embedding API rate limit: Return error "Embedding service rate limited. Retry after delay."
+- Model mismatch: If embedding model differs from handbook embeddings, results will be meaningless but no error raised (caught by search result quality checks downstream)
+
+**Notes**:
+- This node must use the same embedding model as FCA_Handbook_Text_And_Embeddings (configured at harness startup)
+- Embedding happens per question (every user query)
+- Handbook embedding happens once at startup (see EmbeddingModel.md)
+- If model is switched after harness startup, handbook and question embeddings become incompatible; harness must restart to reload handbook
+
 ### semantic_search
 
 **Purpose**: Query `FCA_Handbook_Text_And_Embeddings` for regulatory rules matching entity features and question terminology. Apply regulatory weighting to rank results by binding authority and relevance. Uses FCA Glossary-mapped terminology (from glossary_lookup) alongside user's original question to improve recall on terminology mismatches.
 
 **Input**:
 - `entity_features` (EntityFeatures object): Structured output from parse_markdown
-- `question` (string): User's compliance question (e.g., "Which COBS rules apply?")
+- `question_embedding` (vector): Embedded question from embed_text node
 - `question_terms` (TerminologyMapped object): Mapped FCA Glossary terms from glossary_lookup node
 
 **Configuration** (from YAML node config):
@@ -234,25 +289,24 @@ Each action type is implemented by a Python class that conforms to an exact spec
   - `final_score` (number): base_similarity × rule_type_weight × hierarchy_multiplier × importance_multiplier × piece_weight
   - `source_version` (string): Version of FCA_Handbook_Text_And_Embeddings used (e.g., "2026-Q1")
 
-**Process** (embeddings + deterministic weighting only; no LLM):
-1. Extract search terms: Combine user's original question with all_search_terms from question_terms (mapped FCA Glossary terms + unmapped fallback terms)
-2. Concatenate entity_features (name, type, features, use_cases) with enriched question text (user question + mapped glossary terms)
-3. Embed the combined text using the same embedding model as FCA_Handbook_Text_And_Embeddings (detected at runtime)
-4. Compute cosine similarity (numpy dot product) between query embedding and rule embeddings from pre-loaded FCA_Handbook_Text_And_Embeddings
-5. Sort by cosine similarity, select top 50 candidates (deterministic filtering before weighting)
-6. Apply regulatory weighting algorithm (see StructuredSearch.md) to rank candidates by final_score: base_similarity × rule_type_weight × hierarchy_multiplier × importance_multiplier × piece_weight
-7. Sort by final_score descending (deterministic ranking)
-8. Return top_k results with full weight_factors breakdown for auditability
+**Process** (deterministic weighting only; embedding delegated to embed_text node; no LLM):
+1. Extract search terms: Combine all_search_terms from question_terms (mapped FCA Glossary terms + unmapped fallback terms)
+2. Receive pre-computed question_embedding from embed_text node (ensures question and handbook use same embedding model)
+3. Compute cosine similarity (numpy dot product) between question_embedding and rule embeddings from pre-loaded FCA_Handbook_Text_And_Embeddings
+4. Sort by cosine similarity, select top 50 candidates (deterministic filtering before weighting)
+5. Apply regulatory weighting algorithm (see StructuredSearch.md) to rank candidates by final_score: base_similarity × rule_type_weight × hierarchy_multiplier × importance_multiplier × piece_weight
+6. Sort by final_score descending (deterministic ranking)
+7. Return top_k results with full weight_factors breakdown for auditability
 
 **Validation**:
 - `entity_features`: Must contain entity_type and features (validate EntityFeatures structure)
-- `question`: Non-empty string, min 5 chars, max 1000 chars
+- `question_embedding`: Must be a vector of correct dimensionality (matches handbook embeddings)
+- `question_terms`: Must be valid TerminologyMapped object
 - `Param_top_k`: Integer in range [1, 100], default 20
 - Harness configuration: weights.yaml (schema in StructuredSearch.md) must be present and valid; if missing or invalid: raise error with config path
 
 **Error Handling**:
 - Data source unavailable: Return error "FCA Handbook data (FCA_Handbook_Text_And_Embeddings) is temporarily unavailable. Escalate to compliance_team@company.com"
-- Embedding API failure: Return error "Embedding service unavailable. Unable to query FCA Handbook."
 - Invalid weights.yaml (schema in StructuredSearch.md): Return error "Regulatory weights configuration invalid at {path}: {reason}"
 - No results found: Return empty array with informational log (not an error—some queries legitimately have no matches)
 

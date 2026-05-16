@@ -184,8 +184,10 @@ Register all actions here. The harness uses this registry to look up action impl
 
 ```python
 ACTION_REGISTRY = {
+    "validate_scope": ValidateScopeAction,
     "parse_markdown": ParseMarkdownAction,
     "glossary_lookup": GlossaryLookupAction,
+    "embed_text": EmbedTextAction,
     "semantic_search": SemanticSearchAction,
     "claude_reasoning": ClaudeReasoningAction,
     "approval_gate": ApprovalGateAction,
@@ -324,7 +326,77 @@ from datetime import datetime, timezone
 
 ## 3. Action Implementations
 
-### 3.1 ParseMarkdownAction
+### 3.1 ValidateScopeAction
+
+#### Contract
+
+**Input**: `question` (string)
+**Output**: `ScopeValidation` (dict with valid, reason)
+**Config**: `Param_require_explicit_scope` (bool, default true)
+**Raises**: `ValidationError` if question invalid
+
+#### Implementation
+
+```python
+class ValidateScopeAction(Action):
+    """Validate question scope before workflow execution."""
+    
+    def execute(self, node_input: Dict[str, Any], config: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Validate that question concerns FCA Handbook compliance specifically.
+        
+        Args:
+            node_input: {'question': str}
+            config: {'Param_require_explicit_scope': bool}
+        
+        Returns:
+            {'valid': bool, 'reason': str}
+        """
+        question = node_input.get('question', '')
+        require_explicit = config.get('Param_require_explicit_scope', True)
+        
+        if not question or not isinstance(question, str):
+            raise ValidationError("question must be a non-empty string")
+        
+        if len(question) < 5 or len(question) > 1000:
+            raise ValidationError("question must be 5-1000 characters")
+        
+        question_lower = question.lower()
+        
+        # Check if scope is clear (explicit FCA Handbook mention)
+        if 'fca handbook' in question_lower or 'fca requirements' in question_lower:
+            return {
+                'valid': True,
+                'reason': 'Scope is clear and valid (FCA Handbook explicitly mentioned)'
+            }
+        
+        # Check if scope is out-of-bounds (clearly not regulatory)
+        out_of_scope_keywords = [
+            'best investment strategy', 'how should i invest', 'market outlook',
+            'stock recommendation', 'which stock to buy', 'crypto investment',
+            'personal financial advice'
+        ]
+        for keyword in out_of_scope_keywords:
+            if keyword in question_lower:
+                return {
+                    'valid': False,
+                    'reason': f'Question out of scope: this harness answers FCA Handbook compliance questions, not general financial advice'
+                }
+        
+        # If ambiguous, apply Param_require_explicit_scope logic
+        if require_explicit:
+            return {
+                'valid': False,
+                'reason': 'Scope ambiguous. Please clarify: "Do you mean compliance with the FCA Handbook?"'
+            }
+        else:
+            return {
+                'valid': True,
+                'reason': 'Scope ambiguous but proceeding (Param_require_explicit_scope=false)'
+            }
+```
+
+### 3.2 ParseMarkdownAction
 
 #### Contract
 
@@ -487,7 +559,7 @@ class ParseMarkdownAction(Action):
         return text_lower
 ```
 
-### 3.2 GlossaryLookupAction
+### 3.3 GlossaryLookupAction
 
 #### Contract
 
@@ -600,14 +672,125 @@ class GlossaryLookupAction(Action):
         return None
 ```
 
-### 3.3 SemanticSearchAction
+### 3.4 EmbedTextAction
 
 #### Contract
 
-**Input**: `entity_features` (EntityFeatures), `question_terms` (TerminologyMapped), `question` (string)
+**Input**: `question` (string)
+**Output**: `QuestionEmbedding` (vector)
+**Config**: None (uses embedding model from harness.data_sources.fca_handbook.model)
+**Raises**: `DataSourceUnavailableError` if embedding API unavailable
+
+#### Implementation
+
+```python
+class EmbedTextAction(Action):
+    """Embed question using same model as FCA Handbook embeddings."""
+    
+    def execute(self, node_input: Dict[str, Any], config: Dict[str, Any]) -> List[float]:
+        """
+        Embed the user question with the same embedding model as FCA_Handbook_Text_And_Embeddings.
+        
+        Args:
+            node_input: {'question': str}
+            config: {} (embedding model comes from harness.handbook_index.embedding_model)
+        
+        Returns:
+            List[float]: Embedding vector matching handbook embeddings dimensionality
+        """
+        question = node_input.get('question', '')
+        
+        if not question or not isinstance(question, str):
+            raise ValidationError("question must be a non-empty string")
+        
+        if len(question) > 1000:
+            raise ValidationError("question must be max 1000 characters")
+        
+        # Call _embed_query (same as SemanticSearchAction uses internally)
+        embedding = self._embed_query(question)
+        
+        return embedding
+    
+    def _embed_query(self, text: str) -> List[float]:
+        """
+        Embed query text using the same model as handbook embeddings.
+        
+        Detects embedding model from handbook_index.embedding_model and calls
+        appropriate API (Voyage AI or OpenAI) with credentials from environment.
+        """
+        import os
+        import requests
+        
+        if not text or not isinstance(text, str):
+            raise ValidationError("text must be a non-empty string")
+        
+        embedding_model = self.harness.handbook_index.embedding_model
+        
+        try:
+            if embedding_model == 'voyage-3-large':
+                # Call Voyage AI API
+                api_key = os.environ.get('VOYAGE_API_KEY')
+                if not api_key:
+                    raise DataSourceUnavailableError(
+                        "Embedding service unavailable. VOYAGE_API_KEY environment variable not set.\n"
+                        "Set VOYAGE_API_KEY to enable Voyage AI embeddings."
+                    )
+                
+                response = requests.post(
+                    'https://api.voyageai.com/v1/embeddings',
+                    headers={'Authorization': f'Bearer {api_key}'},
+                    json={'input': text, 'model': 'voyage-3-large'},
+                    timeout=30
+                )
+                response.raise_for_status()
+                embedding = response.json()['data'][0]['embedding']
+                return embedding
+            
+            elif embedding_model == 'text-embedding-3-large':
+                # Call OpenAI API
+                api_key = os.environ.get('OPENAI_API_KEY')
+                if not api_key:
+                    raise DataSourceUnavailableError(
+                        "Embedding service unavailable. OPENAI_API_KEY environment variable not set.\n"
+                        "Set OPENAI_API_KEY to enable OpenAI embeddings."
+                    )
+                
+                response = requests.post(
+                    'https://api.openai.com/v1/embeddings',
+                    headers={'Authorization': f'Bearer {api_key}'},
+                    json={'input': text, 'model': 'text-embedding-3-large'},
+                    timeout=30
+                )
+                response.raise_for_status()
+                embedding = response.json()['data'][0]['embedding']
+                return embedding
+            
+            else:
+                raise DataSourceUnavailableError(
+                    f"Unknown embedding model: {embedding_model}\n"
+                    f"Expected 'voyage-3-large' or 'text-embedding-3-large'"
+                )
+        
+        except requests.exceptions.RequestException as e:
+            raise DataSourceUnavailableError(
+                f"Embedding service unavailable. Failed to call {embedding_model} API: {str(e)}\n"
+                f"Check API credentials and network connectivity."
+            )
+        except (KeyError, ValueError) as e:
+            raise DataSourceUnavailableError(
+                f"Embedding API returned invalid response: {str(e)}\n"
+                f"Ensure API credentials are valid and model {embedding_model} is available."
+            )
+```
+
+### 3.5 SemanticSearchAction
+
+#### Contract
+
+**Input**: `entity_features` (EntityFeatures), `question_terms` (TerminologyMapped), `question_embedding` (vector)
 **Output**: `RankedRules` (array of rule objects with similarity + weight factors)
-**Config**: `Param_top_k` (int, default 20)
-**Raises**: `DataSourceUnavailableError` if embeddings unavailable
+**Config**: `Param_top_k` (int, default 20), `Param_source_version` (string, default "2026-Q1")
+**Raises**: `DataSourceUnavailableError` if data source unavailable
 
 #### HandbookIndex (Data Layer)
 
@@ -1001,7 +1184,7 @@ class SemanticSearchAction(Action):
             )
 ```
 
-### 3.4 ClaudeReasoningAction
+### 3.6 ClaudeReasoningAction
 
 #### Contract
 
@@ -1260,7 +1443,7 @@ class ClaudeReasoningAction(Action):
         return answer.strip()
 ```
 
-### 3.5 ApprovalGateAction
+### 3.7 ApprovalGateAction
 
 #### Contract
 
