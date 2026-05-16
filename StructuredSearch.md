@@ -9,18 +9,18 @@ Prior to Structured Search, the glossary_lookup node will have been executed. Th
 Vector embeddings excel at semantic similarity, but they treat all matches equally. For regulatory compliance, this creates a critical problem:
 
 **Example:**
-- Query: "Which rules apply to robo-advisor discretionary management?"
-- Embedding returns: 
-  - "COBS 2.1.1R" (binding Rule) — similarity: 0.92
-  - "COBS 2.1.1G" (Guidance) — similarity: 0.91
-  - "Glossary definition of 'robo-advisor'" — similarity: 0.89
+- Query: "What are the portfolio management obligations for discretionary investment managers?"
+- Embedding returns (by similarity alone): 
+  - "COBS 11.2.1R" (binding Rule, portfolio management) — similarity: 0.89
+  - "COBS 11.2.17G" (Guidance on suitability) — similarity: 0.88
+  - "Glossary: 'discretionary management' includes managing investments on customer's behalf" — similarity: 0.87
 
 **Standard search ranks these by similarity alone.** But regulatory significance is obfuscated:
-- The Rule is binding law (must comply)
-- The Guidance is interpretive (should consider)
-- The Glossary definition is just definitional (reference)
+- Rule R is binding law (must comply)
+- Guidance G is interpretive (should consider)
+- Glossary is just definitional (reference only)
 
-**Result:** Compliance analysis based on technically relevant but legally misleading results.
+**Result:** Compliance analysis that doesn't distinguish between binding obligations and interpretive guidance, potentially misrepresenting regulatory requirements.
 
 ## Solution: Multi-Factor Regulatory Ranking
 
