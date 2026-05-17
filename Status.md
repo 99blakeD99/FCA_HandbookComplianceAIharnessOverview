@@ -6,6 +6,16 @@ Some will be done as feedback emerges. Others need to be decided by those forkin
 
 Assessed by Claude Opus against GeneralEnquirySpecs.md, StructuredSearch.md, and PythonImplementation.md.
 
+## FCA_Handbook_Text.JSON - Starting Point
+
+FCA_Handbook_Text.JSON is the starting point for the Harness. 
+
+This will be used to create FCA_Handbook_Text_And_Embeddings.
+
+A formal copy has been requested from FCA. 
+
+(A pirate copy has been contrived but is not included in this repo, because of potential unreliability. Here is how to create your own pirate copy: Start with the PRIN bits. Click the link of PRIN 1. Inspect the html. Find the part where the Angular is invoked. Give that to Claude, to create a program that extracts the text using Selenium, and moves on to the next page. Rinse and repeat. Do an eyeball test to see if the right text has been extracted. It probably won't have been, so refine everything and rerun. Repeat until correct. Now move on to the SYSC bits. See if the PRIN method works, if not adapt it. Daisy-chain this until you've done PRIN, COCON, COND... Do a lot of checks and tests. Make sure you build repeatable processes, you'll probably have to adapt and rerun for each new edition.)
+
 ## Critical Stubs (Must Complete Before Production)
 
 ### 1. GlossaryLookupAction._lookup_glossary()
