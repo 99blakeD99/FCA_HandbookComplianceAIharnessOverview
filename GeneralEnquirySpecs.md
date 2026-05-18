@@ -99,6 +99,15 @@ Each node follows the same structure: `name`, `action`, `input` (if applicable),
 
 Each action type is implemented by a Python class that conforms to an exact specification. This ensures auditability: any auditor or implementer can read the spec and verify that the Python code matches it.
 
+**Message Protocol**: Each action includes a **Messaging** section specifying what status updates the Harness sends to the user during execution. Messages serve three purposes: (1) feedback on progress, (2) debugging/transparency on workflow state, (3) audit trail documentation. All messages are logged to both user output and `interactions.json` for compliance review.
+
+**Message Destinations**:
+- **User output**: Printed to stdout (or streamed via websocket in service deployments). Includes symbol prefix (✓, ⚠, ℹ, ✗, →) based on message_type.
+- **Audit trail (interactions.json)**: Unstyled text + timestamp + message_type. Always appended, never filtered.
+- **Interactive prompts** (validate_scope only): Block execution, wait for user confirmation. Both action and user response logged.
+
+**Note**: Message text below is unstyled; the implementation adds symbols (✓, ⚠, ℹ, ✗, →) based on `message_type` ("complete", "warning", "status", "error", "progress"). Pass text without symbols to `self.message(text, message_type)`.
+
 ### validate_scope
 
 **Purpose**: Validate that the user question concerns FCA Handbook compliance specifically (not PRA Requirements, technical standards, or other FCA documents). Acts as gatekeeper before workflow execution.
@@ -128,6 +137,13 @@ Each action type is implemented by a Python class that conforms to an exact spec
 **Error Handling**:
 - Scope validation failure: Return ScopeValidation with valid=false and explanation; do not proceed to subsequent nodes
 - Ambiguous scope + Param_require_explicit_scope=true: Prompt user for clarification; if no confirmation received, reject with valid=false
+
+**Messaging** (user-facing updates):
+- On start: "Validating compliance scope..."
+- On scope valid: "FCA Handbook compliance question confirmed" (message_type: "complete")
+- On scope ambiguous (requires clarification): "Your question scope is ambiguous. Do you mean FCA Handbook compliance?" (message_type: "status"; inline prompt)
+- On scope invalid: "Question out of scope. This harness covers FCA Handbook compliance only: {reason}" (message_type: "error")
+- Message destination: User (all types)
 
 **Notes**:
 - Scope validation may vary by workflow. Some workflows may accept broader scope; this specification applies to general_enquiry only.
@@ -169,6 +185,12 @@ Each action type is implemented by a Python class that conforms to an exact spec
 - Invalid markdown: Return error "Unable to parse product description structure"
 - Missing required fields: Return error "Missing required field: {field_name}"
 - Field validation fails: Return error "Invalid value for {field_name}: {reason}"
+
+**Messaging** (user-facing updates):
+- On start: "Extracting product features from your description..." (message_type: "status")
+- On complete: "Extracted {entity_name}: {feature_count} features, {use_case_count} use cases identified" (message_type: "complete")
+- On error: "Could not parse product description. Please check markdown format." (message_type: "error")
+- Message destination: User (all types)
 
 ### glossary_lookup
 
@@ -217,6 +239,13 @@ Each action type is implemented by a Python class that conforms to an exact spec
 - No terms extracted: Return TerminologyMapped with empty mapped_terms and all unmapped (not an error—semantic_search proceeds with original terms)
 - Glossary lookup fails (data corruption): Return error "Error querying FCA Glossary. Check FCA_Handbook_Text_And_Embeddings integrity."
 
+**Messaging** (user-facing updates):
+- On start: "Mapping terminology to FCA Glossary..." (message_type: "status")
+- On complete: "Mapped {mapped_count} terms to canonical FCA language ({unmapped_count} unmapped)" (message_type: "complete")
+- If no terms found: "No glossary terms found; proceeding with original question terms" (message_type: "warning")
+- On error: "Glossary lookup failed. Proceeding with original question terms." (message_type: "warning")
+- Message destination: User (all types)
+
 **Notes**:
 - Unmapped terms (not found in FCA Glossary) are passed to semantic_search unchanged as fallback
 - This node does not modify the user's question—it enriches it with canonical alternatives
@@ -253,6 +282,12 @@ Each action type is implemented by a Python class that conforms to an exact spec
 - Embedding API unavailable: Return error "Embedding service unavailable. Check API credentials (VOYAGE_API_KEY or OPENAI_API_KEY) and network connectivity."
 - Embedding API rate limit: Return error "Embedding service rate limited. Retry after delay."
 - Model mismatch: If embedding model differs from handbook embeddings, results will be meaningless but no error raised (caught by search result quality checks downstream)
+
+**Messaging** (user-facing updates):
+- On start: "Embedding your question..." (message_type: "status")
+- On complete: "Question embedded ({embedding_model}, {embedding_dimensions} dimensions)" (message_type: "complete")
+- On error: "Embedding service unavailable. Check API credentials and network connectivity." (message_type: "error")
+- Message destination: User (all types)
 
 **Notes**:
 - This node must use the same embedding model as FCA_Handbook_Text_And_Embeddings (configured at harness startup)
@@ -310,6 +345,15 @@ Each action type is implemented by a Python class that conforms to an exact spec
 - Invalid weights.yaml (schema in StructuredSearch.md): Return error "Regulatory weights configuration invalid at {path}: {reason}"
 - No results found: Return empty array with informational log (not an error—some queries legitimately have no matches)
 
+**Messaging** (user-facing updates):
+- On start: "Searching FCA Handbook for relevant rules..." (message_type: "status")
+- On progress (after candidate filtering): "Retrieved {candidate_count} candidates from {total_rules} rules" (message_type: "progress")
+- On progress (during weighting): "Applying regulatory weights to rank results..." (message_type: "progress")
+- On complete: "Retrieved {top_k} ranked rules ({top_1_score:.2f} similarity, {top_1_weight:.1f}x multiplier)" (message_type: "complete")
+- If no results: "No matching rules found for your question" (message_type: "warning")
+- On error: "Search failed. Check FCA Handbook data and weights configuration." (message_type: "error")
+- Message destination: User (all types; progressive updates)
+
 ### claude_reasoning
 
 **Purpose**: Invoke Claude to reason over retrieved rules and product features, producing a compliance analysis with citations and reasoning logs.
@@ -366,6 +410,14 @@ Each action type is implemented by a Python class that conforms to an exact spec
 - Claude API unavailable: Return error "LLM service unavailable. Unable to reason over rules."
 - Citation validation fails: Include warning in ComplianceAnalysis.reasoning_log; do not halt (compliance analyst should review)
 - Empty reasoning output: Return error "LLM produced no usable reasoning output"
+
+**Messaging** (user-facing updates):
+- On start: "Analyzing compliance requirements with Claude..." (message_type: "status")
+- On Claude thinking: "Claude is reasoning (thinking tokens enabled)..." (message_type: "progress")
+- On complete: "Analysis complete. {citation_count} rules identified, confidence: {confidence_score:.0%}" (message_type: "complete")
+- On citation warning: "Citation validation warning: {warning_message}" (message_type: "warning")
+- On error: "LLM analysis failed. Please try again." (message_type: "error")
+- Message destination: User (all types; progressive transparency)
 
 **Citation Validation** (sub-process):
 1. For each citation in Claude's response:
@@ -425,3 +477,17 @@ Each action type is implemented by a Python class that conforms to an exact spec
 - Approval timeout (48h): Return error "Approval pending for >48h. Escalate to {escalation_contact}. Auto-reject recommended."
 - approver_email fails validation: Return error "Approver email invalid or not authorized: {email}"
 - Approver rejects analysis: Store rejection with comments; return ApprovalDecision.approved=false; halt workflow
+
+**Messaging** (user-facing updates):
+- On start: "Analysis ready for compliance review. Awaiting approval from {required_role}..." (message_type: "status")
+- On approval: "Approved by {approver_name} ({approver_role}) at {timestamp}" (message_type: "complete")
+- On rejection: "Rejected by {approver_name} ({approver_role}). Reason: {comments}" (message_type: "error")
+- On timeout (48h): "Approval request timed out after 48 hours. Escalate to compliance_team@company.com" (message_type: "error")
+- Message destination: User (all types); audit trail includes messages PLUS ApprovalDecision object with identity, timestamp, and actions_carried_out
+
+**Audit Trail Integration**:
+The approval_gate action returns ApprovalDecision with complete audit metadata. The harness logs both:
+1. Messages (as with all actions): unstyled text + timestamp + type
+2. ApprovalDecision object: approver_name, approver_email, approver_role, timestamp (decision time), actions_carried_out
+
+Together these provide full audit trail: what the system asked, who approved/rejected, when, and what actions were taken. An auditor reviewing `interactions.json` will find both the message progression and the formal ApprovalDecision metadata.

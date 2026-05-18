@@ -19,11 +19,13 @@ This document provides the patterns, interfaces, and concrete implementations ne
    - [2.4 Claude Tool Schemas](#24-claude-tool-schemas)
    - [2.5 Common Patterns](#25-common-patterns)
 3. [3. Action Implementations](#3-action-implementations)
-   - [3.1 ParseMarkdownAction](#31-parsemarkdownaction)
-   - [3.2 GlossaryLookupAction](#32-glossarylookupaction)
-   - [3.3 SemanticSearchAction](#33-semanticsearchaction)
-   - [3.4 ClaudeReasoningAction](#34-claudereasoningaction)
-   - [3.5 ApprovalGateAction](#35-approvalgateaction)
+   - [3.1 ValidateScopeAction](#31-validatescopeaction)
+   - [3.2 ParseMarkdownAction](#32-parsemarkdownaction)
+   - [3.3 GlossaryLookupAction](#33-glossarylookupaction)
+   - [3.4 EmbedTextAction](#34-embedtextaction)
+   - [3.5 SemanticSearchAction](#35-semanticsearchaction)
+   - [3.6 ClaudeReasoningAction](#36-claudereasoningaction)
+   - [3.7 ApprovalGateAction](#37-approvalgateaction)
 4. [4. Harness Orchestration](#4-harness-orchestration)
    - [4.1 ComplianceHarness Class](#41-complianceharness-class)
    - [4.2 Workflow Execution](#42-workflow-execution)
@@ -151,6 +153,7 @@ class Action(ABC):
             harness: ComplianceHarness instance (provides handbook_index, workflows, etc.)
         """
         self.harness = harness
+        self._messages: list = []  # Collect messages during execute() for audit logging
     
     @abstractmethod
     def execute(self, node_input: Dict[str, Any], config: Dict[str, Any]) -> Any:
@@ -298,7 +301,7 @@ When emitting timestamps (used in ClaudeReasoningAction, ApprovalGateAction, and
 from datetime import datetime, timezone
 
 timestamp = datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
-# Result: "2026-05-16T14:32:45.123456+00:00Z" (ISO 8601 with explicit UTC marker)
+# Result: "2026-05-16T14:32:45.123456Z" (ISO 8601 UTC)
 ```
 
 #### External-Service Unavailability Errors
@@ -320,6 +323,122 @@ All files that emit timestamps should include:
 
 ```python
 from datetime import datetime, timezone
+```
+
+#### User Message Handling
+
+All actions send real-time status updates to the user and audit trail. The `Action` base class provides a `message()` method:
+
+```python
+def message(self, text: str, message_type: str = "status"):
+    """
+    Send a message to user and audit trail.
+    
+    Args:
+        text: Message content (unstyled; symbol added based on message_type)
+        message_type: "status", "progress", "complete", "error", "warning"
+    
+    Effect:
+        1. Prints styled message to user (stdout or websocket per deployment)
+        2. Appends to self._messages for audit logging by harness
+    
+    Failure Semantics:
+        - If user output fails (e.g., websocket disconnected): Log to stderr and continue
+          (user feedback lost but action execution not blocked)
+        - If audit append fails (e.g., memory constraint): Raise ActionError and halt action
+          (audit integrity is critical; action must not continue if audit trail incomplete)
+        - Never swallow exceptions that affect audit trail; let harness decide escalation
+    """
+    from datetime import datetime, timezone
+    
+    timestamp = datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
+    
+    # Format for user display (add symbol based on type)
+    symbols = {
+        "status": "ℹ",
+        "progress": "→",
+        "complete": "✓",
+        "warning": "⚠",
+        "error": "✗"
+    }
+    symbol = symbols.get(message_type, '')
+    user_message = f"{symbol} {text}".strip() if symbol else text
+    
+    # Emit to user (stdout or websocket per deployment)
+    print(user_message)
+    
+    # Collect for audit logging (harness drains self._messages after execute() completes)
+    audit_entry = {
+        'timestamp': timestamp,
+        'type': message_type,
+        'text': text
+    }
+    self._messages.append(audit_entry)
+```
+
+**Usage in actions:**
+
+```python
+# In ParseMarkdownAction.execute():
+self.message("Extracting product features from your description...")
+# ... extraction logic ...
+self.message(f"Extracted {entity_name}: {feature_count} features identified", "complete")
+
+# In SemanticSearchAction.execute():
+self.message("Searching FCA Handbook for relevant rules...")
+# ... retrieve 50 candidates ...
+self.message(f"Retrieved {candidate_count} candidates from {total_rules} rules", "progress")
+# ... apply weighting ...
+self.message(f"Retrieved {top_k} ranked rules ({score:.2f} similarity)", "complete")
+
+# On error:
+try:
+    # ... operation ...
+except APIError as e:
+    self.message(f"Search failed: {str(e)}", "error")
+    raise DataSourceUnavailableError(...)
+```
+
+**Message types (map to GeneralEnquirySpecs.md § Messaging):**
+- `"status"` → on_start, intermediate updates
+- `"progress"` → long-running operations (candidates found, weights applied)
+- `"complete"` → ✓ action succeeded
+- `"warning"` → ⚠ soft failures (no results found, skipped step)
+- `"error"` → ✗ hard failures (API down, validation failed)
+
+All messages are both user-visible and audit-logged with timestamp.
+
+#### Template Variable Interpolation
+
+Message text in GeneralEnquirySpecs.md § Messaging uses template variables like `{top_k}`, `{entity_name}`, `{confidence_score:.0%}`. These are **caller-side interpolated** (not by `message()` itself):
+
+```python
+# In SemanticSearchAction.execute():
+top_k = 20
+candidate_count = 50
+total_rules = 10438
+
+# Variable interpolation happens at call site
+self.message(f"Retrieved {candidate_count} candidates from {total_rules} rules", "progress")
+
+# message() receives the already-interpolated string: "Retrieved 50 candidates from 10438 rules"
+```
+
+**Convention**: Format specifiers (`.2f`, `.0%`, etc.) are Python f-string syntax. Actions must:
+1. Extract the variable value from context (output, config, or computation)
+2. Interpolate using f-string at the call site
+3. Pass the fully-rendered string to `message()`
+
+**Example with formatting**:
+```python
+# Spec says: "Retrieved {top_k} ranked rules ({top_1_score:.2f} similarity, {top_1_weight:.1f}x multiplier)"
+top_1_score = 0.8734  # from results
+top_1_weight = 2.5    # from weight_factors
+self.message(
+    f"Retrieved {top_k} ranked rules ({top_1_score:.2f} similarity, {top_1_weight:.1f}x multiplier)",
+    "complete"
+)
+# Result: "Retrieved 20 ranked rules (0.87 similarity, 2.5x multiplier)"
 ```
 
 ---
@@ -1638,32 +1757,97 @@ Execute a workflow node-by-node, passing outputs to dependent nodes.
 
 ### 4.3 Audit Logging
 
-Log all interactions and errors for compliance audit trails.
+Log all interactions, messages, and errors for compliance audit trails. Audit logs capture both action execution status and user-facing messages (from § 2.5 User Message Handling).
 
 ```python
-    def _log_interaction(self, node_name: str, status: str):
-        """Log successful node execution."""
+    def _log_interaction(self, node_name: str, status: str, messages: list = None):
+        """
+        Log successful node execution with any messages emitted.
+        
+        Args:
+            node_name: YAML node name (e.g., 'retrieve_rules')
+            status: Execution status (e.g., 'complete')
+            messages: List of message dicts emitted during execution
+                     [{'timestamp': ISO8601, 'type': 'status'|'progress'|'complete'|'error'|'warning', 'text': str}]
+        """
         timestamp = datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
         log_entry = {
             'timestamp': timestamp,
             'node': node_name,
-            'status': status
+            'status': status,
+            'messages': messages or []
         }
-        # Stub: write to audit log (file, database, or event stream)
-        print(json.dumps(log_entry))
+        # Stub: write to interactions.json or audit log (file, database, or event stream)
+        with open('interactions.json', 'a') as f:
+            f.write(json.dumps(log_entry) + '\n')
     
-    def _log_error(self, node_name: str, error_message: str):
-        """Log node execution error."""
+    def _log_error(self, node_name: str, error_message: str, messages: list = None):
+        """
+        Log node execution error with any messages emitted before failure.
+        
+        Args:
+            node_name: YAML node name
+            error_message: Exception message or error reason
+            messages: List of message dicts emitted before error
+        """
         timestamp = datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
         log_entry = {
             'timestamp': timestamp,
             'node': node_name,
             'status': 'error',
-            'error': error_message
+            'error': error_message,
+            'messages': messages or []
         }
         # Stub: write to audit log
-        print(json.dumps(log_entry))
+        with open('interactions.json', 'a') as f:
+            f.write(json.dumps(log_entry) + '\n')
 ```
+
+**Integration with workflow execution:**
+
+The harness manages message flow: actions append to `self._messages` during `execute()`, then the harness drains and logs them:
+
+```python
+# In ComplianceHarness.execute_workflow():
+for node in workflow_nodes:
+    try:
+        # Get action and execute (action appends to self._messages during run)
+        action = ActionRegistry.get(node['action'])
+        result = action.execute(node_input, node['config'])
+        
+        # Drain messages from action and log with node completion
+        messages = action._messages
+        action._messages = []  # Reset for next execution if reused
+        self._log_interaction(node['name'], 'complete', messages)
+        
+        # Store result in context for downstream nodes
+        context[node['name']] = result
+        
+    except Exception as e:
+        # Log error with any partial messages emitted before failure
+        messages = action._messages
+        action._messages = []
+        self._log_error(node['name'], str(e), messages)
+        raise
+```
+
+**Audit trail structure (interactions.json):**
+
+```json
+{
+  "timestamp": "2026-05-16T14:32:45Z",
+  "node": "retrieve_rules",
+  "status": "complete",
+  "messages": [
+    {"timestamp": "2026-05-16T14:32:45Z", "type": "status", "text": "Searching FCA Handbook for relevant rules..."},
+    {"timestamp": "2026-05-16T14:32:46Z", "type": "progress", "text": "Retrieved 50 candidates from 10438 rules"},
+    {"timestamp": "2026-05-16T14:32:47Z", "type": "progress", "text": "Applying regulatory weights to rank results..."},
+    {"timestamp": "2026-05-16T14:32:48Z", "type": "complete", "text": "Retrieved 20 ranked rules (0.87 similarity, 2.5x multiplier)"}
+  ]
+}
+```
+
+This structure preserves the full progression of user-facing messages within the audit trail, enabling both live user feedback and post-hoc compliance review.
 
 ### 4.4 Tool Integration Entry Point
 
@@ -1778,39 +1962,45 @@ Follow this order to implement the Harness:
 - [ ] Define Common Patterns helpers (timestamp, validation, config extraction)
 
 ### Phase 2: Data Layer
-- [ ] Implement HandbookIndex: load embeddings, detect model, validate dimensions (§3.3)
+- [ ] Implement HandbookIndex: load embeddings, detect model, validate dimensions (§3.5)
 - [ ] Test HandbookIndex._detect_embedding_key with sample JSON
 - [ ] Implement HandbookIndex.search with cosine similarity + weighting
 
 ### Phase 3: Deterministic Actions
-- [ ] Implement ParseMarkdownAction (§3.1) — no external dependencies
-- [ ] Implement GlossaryLookupAction (§3.2) — no external dependencies
-- [ ] Unit test both; verify error messages are clear
+- [ ] Implement ValidateScopeAction (§3.1) — scope validation
+- [ ] Implement ParseMarkdownAction (§3.2) — markdown parsing
+- [ ] Implement GlossaryLookupAction (§3.3) — glossary lookup
+- [ ] Implement EmbedTextAction (§3.4) — embedding API integration
+- [ ] Unit test all; verify error messages and messaging are clear
 
-### Phase 4: LLM-Dependent Actions
-- [ ] Implement SemanticSearchAction with HandbookIndex integration (§3.3)
-- [ ] Implement ClaudeReasoningAction with tool integration (§3.4)
-- [ ] Implement ApprovalGateAction human gate (§3.5)
+### Phase 4: Embedding & Search Actions
+- [ ] Implement SemanticSearchAction with HandbookIndex integration (§3.5)
+- [ ] Test semantic search with real handbook embeddings
+
+### Phase 5: LLM-Dependent Actions
+- [ ] Implement ClaudeReasoningAction with tool integration (§3.6)
+- [ ] Implement ApprovalGateAction human gate (§3.7)
 - [ ] Unit test with mocked Claude API
 
-### Phase 5: Orchestration
+### Phase 6: Orchestration
 - [ ] Implement ComplianceHarness class (§4.1–4.3)
-- [ ] Implement workflow execution loop (§4.2)
-- [ ] Implement audit logging (§4.3)
+- [ ] Implement workflow execution loop with message collection (§4.2)
+- [ ] Implement audit logging with message draining (§4.3)
 - [ ] Register all actions in ACTION_REGISTRY (§2.3)
 
-### Phase 6: External Integration
+### Phase 7: External Integration
 - [ ] Implement tool integration entry point (§4.4)
 - [ ] Wire Harness into external LLM SDK (Anthropic, OpenAI)
 - [ ] Test tool invocation end-to-end
 
-### Phase 7: Testing & Validation
+### Phase 8: Testing & Validation
 - [ ] Write unit tests for each action (§5)
 - [ ] Write integration test for full workflow (§5)
 - [ ] Test error handling for each exception type
 - [ ] Test audit logging with real and fixture data
+- [ ] Test message collection and audit trail completeness
 
-### Phase 8: Deployment
+### Phase 9: Deployment
 - [ ] Load production FCA_Handbook_Text_And_Embeddings
 - [ ] Configure harness.yaml with correct paths and versions
 - [ ] Deploy to target environment (direct Python, FastAPI service, or platform)
