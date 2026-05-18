@@ -68,10 +68,10 @@ The Harness provides reliability, the LLM provides reasoning (intelligence).
 
 | Task | Comment |
 |------|-----|
-| Retrieve FCA rules via semantic search using embeddings | Deterministic; auditable |
+| Retrieve FCA Handbook entries via semantic search using embeddings | Deterministic; auditable |
 | Apply regulatory weighting based on Handbook hierarchy | Enforces Handbook structure, not reasoning |
 | Return top N weighted results | Deterministic; N configurable per design |
-| Format citations as rule + reference | Standardized; prevents paraphrasing |
+| Format citations as entry + reference | Standardized; prevents paraphrasing |
 | Validate retrieved citations against source | Confirm accuracy |
 | Log the reasoning chain | Audit trail |
 
@@ -84,10 +84,10 @@ Note 2. Generally the functionality in the Harness uses well-proven non-AI metho
 | Task | Why |
 |------|-----|
 | Classify the question to determine workflow type | Understands intent; routes to general_enquiry, regulatory_change_analysis, etc. |
-| Reason which of the N rules apply to a specific situation | Genuine reasoning—requires interpretation |
-| Explain *why* a rule applies | Interpretation and nuance; LLM's strength |
+| Reason which of the N entries apply to a specific situation | Genuine reasoning—requires interpretation |
+| Explain *why* an entry applies | Interpretation and nuance; LLM's strength |
 | Identify gaps or ambiguities | Flagging edge cases; LLM's strength |
-| Quote the retrieved citations and provide context | LLM can point to specific rule text |
+| Quote the retrieved citations and provide context | LLM can point to specific entry text |
 
 Note 1: These functions are "generative AI", and non-deterministic. The LLM will use whatever it thinks relevant at the time, subject to the constraints of the Harness.
 

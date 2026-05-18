@@ -67,11 +67,11 @@ NODE 2 (glossary_lookup):
 
 NODE 3 (semantic_search):
   INPUT: {entity_features: context['extract_features'], question_terms: context['check_terminology'], question}
-  OUTPUT: RankedRules (list of rules with similarity + weights)
-  STORED: context['retrieve_rules']
+  OUTPUT: RankedEntries (list of entries with similarity + weights)
+  STORED: context['retrieve_entries']
 
 NODE 4 (claude_reasoning):
-  INPUT: {entity_features: context['extract_features'], rules: context['retrieve_rules']}
+  INPUT: {entity_features: context['extract_features'], entries: context['retrieve_entries']}
   OUTPUT: ComplianceAnalysis (answer + citations + reasoning_log)
   STORED: context['analyze_compliance']
 
@@ -163,7 +163,7 @@ class Action(ABC):
         Args:
             node_input: Input prepared from YAML node["input"]. May contain:
                         - User inputs (entity_description, question)
-                        - Outputs from earlier nodes (EntityFeatures, RankedRules, etc.)
+                        - Outputs from earlier nodes (EntityFeatures, RankedEntries, etc.)
             config: Node configuration from YAML node["config"]. Contains Param_* keys.
         
         Returns:
@@ -205,13 +205,13 @@ These tools enforce structured output from Claude for citations and reasoning lo
 # Module-level tool definitions (referenced by ClaudeReasoningAction)
 CITATION_FORMATTER_TOOL = {
     "name": "citation_formatter",
-    "description": "Format a citation to an FCA Handbook rule with rule_id, verbatim text, and context showing why it applies.",
+    "description": "Format a citation to an FCA Handbook rule with entry_id, verbatim text, and context showing why it applies.",
     "input_schema": {
         "type": "object",
         "properties": {
-            "rule_id": {
+            "entry_id": {
                 "type": "string",
-                "description": "FCA rule identifier from RankedRules (e.g., 'COBS 2.1.1R'). Must match a rule_id from the retrieved rules."
+                "description": "FCA rule identifier from RankedEntries (e.g., 'COBS 2.1.1R'). Must match a entry_id from the retrieved rules."
             },
             "cited_text": {
                 "type": "string",
@@ -224,10 +224,10 @@ CITATION_FORMATTER_TOOL = {
             "binding_level": {
                 "type": "string",
                 "enum": ["R", "G", "E", "D"],
-                "description": "Binding level: R=Rules, G=Guidance, E=Evidential, D=Deleted. Extracted from rule_id suffix."
+                "description": "Binding level: R=Rules, G=Guidance, E=Evidential, D=Deleted. Extracted from entry_id suffix."
             }
         },
-        "required": ["rule_id", "cited_text", "context", "binding_level"]
+        "required": ["entry_id", "cited_text", "context", "binding_level"]
     }
 }
 
@@ -385,11 +385,11 @@ self.message("Extracting product features from your description...")
 self.message(f"Extracted {entity_name}: {feature_count} features identified", "complete")
 
 # In SemanticSearchAction.execute():
-self.message("Searching FCA Handbook for relevant rules...")
+self.message("Searching FCA Handbook for relevant entries...")
 # ... retrieve 50 candidates ...
-self.message(f"Retrieved {candidate_count} candidates from {total_rules} rules", "progress")
+self.message(f"Retrieved {candidate_count} candidates from {total_entries} entries", "progress")
 # ... apply weighting ...
-self.message(f"Retrieved {top_k} ranked rules ({score:.2f} similarity)", "complete")
+self.message(f"Retrieved {top_k} ranked entries ({score:.2f} similarity)", "complete")
 
 # On error:
 try:
@@ -907,7 +907,7 @@ class EmbedTextAction(Action):
 #### Contract
 
 **Input**: `entity_features` (EntityFeatures), `question_terms` (TerminologyMapped), `question_embedding` (vector)
-**Output**: `RankedRules` (array of rule objects with similarity + weight factors)
+**Output**: `RankedEntries` (array of rule objects with similarity + weight factors)
 **Config**: `Param_top_k` (int, default 20), `Param_source_version` (string, default "2026-Q1")
 **Raises**: `DataSourceUnavailableError` if data source unavailable
 
@@ -953,7 +953,7 @@ class HandbookIndex:
         if 'fca_handbook' not in data:
             raise DataSourceUnavailableError(
                 f"FCA Handbook JSON missing 'fca_handbook' key.\n"
-                f"Expected structure: {{'fca_handbook': [{{'rule_id': '...', 'text': '...', 'voyage-3-large_embedding': [...]}}]}}\n"
+                f"Expected structure: {{'fca_handbook': [{{'entry_id': '...', 'text': '...', 'voyage-3-large_embedding': [...]}}]}}\n"
                 f"See FCA_Handbook_Template_PRIN.json for the correct format."
             )
         
@@ -977,7 +977,7 @@ class HandbookIndex:
         
         # Default regulatory weights (from StructuredSearch.md § Weighting Factors)
         self.weights = {
-            'rule_type_weights': {
+            'entry_type_weights': {
                 'RULES': 1.0,
                 'GUIDANCE': 0.8,
                 'EVIDENTIAL': 0.6,
@@ -1034,7 +1034,7 @@ class HandbookIndex:
             f"3. Add the embedding vector to each record with the key: 'voyage-3-large_embedding'\n"
             f"4. Example record:\n"
             f"   {{\n"
-            f"     'rule_id': 'COBS 2.1.1R',\n"
+            f"     'entry_id': 'COBS 2.1.1R',\n"
             f"     'text': '...',\n"
             f"     'voyage-3-large_embedding': [0.123, -0.456, ...]\n"
             f"   }}\n\n"
@@ -1087,7 +1087,7 @@ class HandbookIndex:
             top_k: Number of results to return (default 20, range 1-100)
         
         Returns:
-            List of dicts with: rule_id, text, base_similarity, weight_factors, final_score
+            List of dicts with: entry_id, text, base_similarity, weight_factors, final_score
         """
         query_embedding = np.array(query_embedding)
         
@@ -1112,7 +1112,7 @@ class HandbookIndex:
             candidate['weight_factors'] = self._compute_weights(candidate['record'])
             candidate['final_score'] = (
                 candidate['base_similarity'] 
-                * candidate['weight_factors']['rule_type_weight']
+                * candidate['weight_factors']['entry_type_weight']
                 * candidate['weight_factors']['hierarchy_multiplier']
                 * candidate['weight_factors']['importance_multiplier']
                 * candidate['weight_factors']['piece_weight']
@@ -1126,20 +1126,20 @@ class HandbookIndex:
         """
         Compute all weight factors for a record per StructuredSearch.md § Weighting Factors.
         
-        Extracts rule type, hierarchy level, importance score, and piece authority
+        Extracts entry type, hierarchy level, importance score, and piece authority
         to compute final weighting multipliers for regulatory ranking.
         """
-        # Extract rule_type_weight from regulatory_content suffix (R/G/E/U/D)
+        # Extract entry_type_weight from regulatory_content suffix (R/G/E/U/D)
         regulatory_content = record.get('regulatory_content', '')
-        rule_type_map = {'R': 'RULES', 'G': 'GUIDANCE', 'E': 'EVIDENTIAL', 'D': 'DELETED', 'U': 'UNCLASSIFIED'}
+        entry_type_map = {'R': 'RULES', 'G': 'GUIDANCE', 'E': 'EVIDENTIAL', 'D': 'DELETED', 'U': 'UNCLASSIFIED'}
         
-        rule_type_key = 'UNCLASSIFIED'  # Default if not found
+        entry_type_key = 'UNCLASSIFIED'  # Default if not found
         for char in regulatory_content:
-            if char in rule_type_map:
-                rule_type_key = rule_type_map[char]
+            if char in entry_type_map:
+                entry_type_key = entry_type_map[char]
                 break
         
-        rule_type_weight = self.weights['rule_type_weights'].get(rule_type_key, 0.8)
+        entry_type_weight = self.weights['entry_type_weights'].get(entry_type_key, 0.8)
         
         # Extract hierarchy_multiplier from record['level']
         level = record.get('level', 3)
@@ -1164,7 +1164,7 @@ class HandbookIndex:
         piece_weight = self.weights['piece_base_weights'].get(piece, 1.0)
         
         return {
-            'rule_type_weight': rule_type_weight,
+            'entry_type_weight': entry_type_weight,
             'hierarchy_multiplier': hierarchy_multiplier,
             'importance_multiplier': importance_multiplier,
             'piece_weight': piece_weight
@@ -1197,7 +1197,7 @@ class SemanticSearchAction(Action):
             }
         
         Returns:
-            List of RankedRule dicts (rule_id, text, base_similarity, weight_factors, final_score)
+            List of RankedEntry dicts (entry_id, text, base_similarity, weight_factors, final_score)
         """
         entity_features = node_input.get('entity_features', {})
         question_terms = node_input.get('question_terms', {})
@@ -1221,7 +1221,7 @@ class SemanticSearchAction(Action):
         
         return [
             {
-                'rule_id': r['record'].get('rule_id'),
+                'entry_id': r['record'].get('entry_id'),
                 'text': r['record'].get('text'),
                 'base_similarity': r['base_similarity'],
                 'weight_factors': r['weight_factors'],
@@ -1307,7 +1307,7 @@ class SemanticSearchAction(Action):
 
 #### Contract
 
-**Input**: `entity_features` (EntityFeatures), `rules` (RankedRules)
+**Input**: `entity_features` (EntityFeatures), `entries` (RankedEntries)
 **Output**: `ComplianceAnalysis` (dict with answer, citations, reasoning_log, timestamp)
 **Config**: `Param_tools` (list), `Param_prompt_template` (path)
 **Raises**: `ValidationError`, `DataSourceUnavailableError`
@@ -1329,7 +1329,7 @@ class ClaudeReasoningAction(Action):
         Args:
             node_input: {
                 'entity_features': dict (EntityFeatures),
-                'rules': list (RankedRules from semantic_search)
+                'rules': list (RankedEntries from semantic_search)
             }
             config: {
                 'Param_tools': list (e.g., ['citation_formatter', 'audit_logger']),
@@ -1339,16 +1339,16 @@ class ClaudeReasoningAction(Action):
         Returns:
             {
                 'answer': str (Claude's analysis),
-                'citations': list of {'rule_id', 'cited_text', 'context', 'binding_level'},
+                'citations': list of {'entry_id', 'cited_text', 'context', 'binding_level'},
                 'reasoning_log': {'reasoning_chain': str, 'gaps_identified': list, 'confidence_score': float},
                 'timestamp': str (ISO 8601)
             }
         """
         entity_features = node_input.get('entity_features', {})
-        rules = node_input.get('rules', [])
+        rules = node_input.get('entries', [])
         
         if not isinstance(rules, list) or len(rules) == 0:
-            raise ValidationError("rules must be non-empty list of RankedRules")
+            raise ValidationError("rules must be non-empty list of RankedEntries")
         
         try:
             prompt_template_path = config.get('Param_prompt_template')
@@ -1364,7 +1364,7 @@ class ClaudeReasoningAction(Action):
         template = jinja_env.from_string(template_text)
         system_prompt = template.render(
             entity_features=json.dumps(entity_features, indent=2),
-            ranked_rules=json.dumps(rules, indent=2)
+            ranked_entries=json.dumps(rules, indent=2)
         )
         
         # Build tool list from config (or default to citation_formatter and audit_logger)
@@ -1411,9 +1411,9 @@ class ClaudeReasoningAction(Action):
         
         # Validate citations
         for citation in citations:
-            if citation['rule_id'] not in [r['rule_id'] for r in rules]:
+            if citation['entry_id'] not in [r['entry_id'] for r in rules]:
                 # Flag for review but don't halt
-                reasoning_log['_citation_warning'] = f"Citation {citation['rule_id']} not in retrieved rules"
+                reasoning_log['_citation_warning'] = f"Citation {citation['entry_id']} not in retrieved rules"
         
         timestamp = datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
         
@@ -1429,10 +1429,10 @@ class ClaudeReasoningAction(Action):
         Extract citation_formatter tool calls from Claude response.
         
         Iterates over response.content blocks, finds tool_use blocks where
-        name == 'citation_formatter', and validates rule_id against retrieved rules.
+        name == 'citation_formatter', and validates entry_id against retrieved rules.
         """
         citations = []
-        rule_ids = {r['rule_id'] for r in rules}
+        entry_ids = {r['entry_id'] for r in rules}
         
         if not hasattr(response, 'content') or not response.content:
             return citations
@@ -1445,32 +1445,32 @@ class ClaudeReasoningAction(Action):
                         # Extract input data from tool call
                         tool_input = block.input
                         
-                        rule_id = tool_input.get('rule_id')
+                        entry_id = tool_input.get('entry_id')
                         cited_text = tool_input.get('cited_text')
                         context = tool_input.get('context')
                         binding_level = tool_input.get('binding_level')
                         
-                        # Validate rule_id exists in retrieved rules
-                        if rule_id not in rule_ids:
+                        # Validate entry_id exists in retrieved rules
+                        if entry_id not in entry_ids:
                             # Log warning but continue processing other citations
                             import logging
                             logging.warning(
-                                f"Citation references rule_id '{rule_id}' not in retrieved rules. "
-                                f"Available: {sorted(rule_ids)}"
+                                f"Citation references entry_id '{entry_id}' not in retrieved rules. "
+                                f"Available: {sorted(entry_ids)}"
                             )
                             continue
                         
                         # Validate required fields present
-                        if not all([rule_id, cited_text, context, binding_level]):
+                        if not all([entry_id, cited_text, context, binding_level]):
                             import logging
                             logging.warning(
-                                f"Citation incomplete: rule_id={rule_id}, cited_text={bool(cited_text)}, "
+                                f"Citation incomplete: entry_id={entry_id}, cited_text={bool(cited_text)}, "
                                 f"context={bool(context)}, binding_level={binding_level}"
                             )
                             continue
                         
                         citations.append({
-                            'rule_id': rule_id,
+                            'entry_id': entry_id,
                             'cited_text': cited_text,
                             'context': context,
                             'binding_level': binding_level
@@ -1765,7 +1765,7 @@ Log all interactions, messages, and errors for compliance audit trails. Audit lo
         Log successful node execution with any messages emitted.
         
         Args:
-            node_name: YAML node name (e.g., 'retrieve_rules')
+            node_name: YAML node name (e.g., 'retrieve_entries')
             status: Execution status (e.g., 'complete')
             messages: List of message dicts emitted during execution
                      [{'timestamp': ISO8601, 'type': 'status'|'progress'|'complete'|'error'|'warning', 'text': str}]
@@ -1836,13 +1836,13 @@ for node in workflow_nodes:
 ```json
 {
   "timestamp": "2026-05-16T14:32:45Z",
-  "node": "retrieve_rules",
+  "node": "retrieve_entries",
   "status": "complete",
   "messages": [
-    {"timestamp": "2026-05-16T14:32:45Z", "type": "status", "text": "Searching FCA Handbook for relevant rules..."},
-    {"timestamp": "2026-05-16T14:32:46Z", "type": "progress", "text": "Retrieved 50 candidates from 10438 rules"},
+    {"timestamp": "2026-05-16T14:32:45Z", "type": "status", "text": "Searching FCA Handbook for relevant entries..."},
+    {"timestamp": "2026-05-16T14:32:46Z", "type": "progress", "text": "Retrieved 50 candidates from 10438 entries"},
     {"timestamp": "2026-05-16T14:32:47Z", "type": "progress", "text": "Applying regulatory weights to rank results..."},
-    {"timestamp": "2026-05-16T14:32:48Z", "type": "complete", "text": "Retrieved 20 ranked rules (0.87 similarity, 2.5x multiplier)"}
+    {"timestamp": "2026-05-16T14:32:48Z", "type": "complete", "text": "Retrieved 20 ranked entries (0.87 similarity, 2.5x multiplier)"}
   ]
 }
 ```
@@ -1916,10 +1916,10 @@ class TestParseMarkdownAction(unittest.TestCase):
 class TestSemanticSearchAction(unittest.TestCase):
     
     @patch('handbook_index.search')
-    def test_returns_ranked_rules(self, mock_search):
-        """Test that search returns properly formatted RankedRules."""
+    def test_returns_ranked_entries(self, mock_search):
+        """Test that search returns properly formatted RankedEntries."""
         mock_search.return_value = [
-            {'rule_id': 'COBS 2.1.1R', 'text': 'Rule text', 'base_similarity': 0.9}
+            {'entry_id': 'COBS 2.1.1R', 'text': 'Rule text', 'base_similarity': 0.9}
         ]
         action = SemanticSearchAction()
         result = action.execute({

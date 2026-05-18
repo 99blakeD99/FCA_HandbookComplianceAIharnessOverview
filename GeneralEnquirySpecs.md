@@ -2,7 +2,7 @@
 
 This document specifies the **general_enquiry** workflow, which is the first implementation of the Compliance Agent Harness. It includes the YAML workflow definition and detailed specifications for each action type used in this workflow.
 
-The general_enquiry workflow handles: product/service description → feature extraction → rule retrieval → compliance reasoning → human approval.
+The general_enquiry workflow handles: product/service description → feature extraction → entry retrieval → compliance reasoning → human approval.
 
 Other workflows (regulatory_change_analysis, incident_investigation, etc.) will have similar specifications files, following this template.
 
@@ -48,13 +48,13 @@ harness:
           output: QuestionEmbedding
           config: {}
         
-        - name: retrieve_rules
+        - name: retrieve_entries
           action: semantic_search
           input:
             entity_features: extract_features
             question_terms: check_terminology
             question_embedding: embed_question
-          output: RankedRules
+          output: RankedEntries
           config:
             Param_top_k: 20
             Param_source_version: "2026-Q1"
@@ -63,7 +63,7 @@ harness:
           action: claude_reasoning
           input:
             entity_features: extract_features
-            rules: retrieve_rules
+            entries: retrieve_entries
           output: ComplianceAnalysis
           config:
             Param_tools:
@@ -297,7 +297,7 @@ Each action type is implemented by a Python class that conforms to an exact spec
 
 ### semantic_search
 
-**Purpose**: Query `FCA_Handbook_Text_And_Embeddings` for regulatory rules matching entity features and question terminology. Apply regulatory weighting to rank results by binding authority and relevance. Uses FCA Glossary-mapped terminology (from glossary_lookup) alongside user's original question to improve recall on terminology mismatches.
+**Purpose**: Query `FCA_Handbook_Text_And_Embeddings` for regulatory entries matching entity features and question terminology. Apply regulatory weighting to rank results by binding authority and relevance. Uses FCA Glossary-mapped terminology (from glossary_lookup) alongside user's original question to improve recall on terminology mismatches.
 
 **Input**:
 - `entity_features` (EntityFeatures object): Structured output from parse_markdown
@@ -312,24 +312,24 @@ Each action type is implemented by a Python class that conforms to an exact spec
 - Weighting: Always enabled (regulatory weighting always applied)
 
 **Output**:
-- `RankedRules` (array of objects) with fields:
-  - `rule_id` (string): FCA rule identifier (e.g., "COBS 2.1.1R")
-  - `text` (string): Verbatim rule text from source
+- `RankedEntries` (array of objects) with fields:
+  - `entry_id` (string): FCA entry identifier (e.g., "COBS 2.1.1R")
+  - `text` (string): Verbatim entry text from source
   - `base_similarity` (number, 0–1): Cosine similarity from embeddings
   - `weight_factors` (object):
-    - `rule_type_weight` (number): Binding authority multiplier
+    - `entry_type_weight` (number): Binding authority multiplier
     - `hierarchy_multiplier` (number): Position in handbook structure
     - `importance_multiplier` (number): Regulatory criticality
     - `piece_weight` (number): Section weighting
-  - `final_score` (number): base_similarity × rule_type_weight × hierarchy_multiplier × importance_multiplier × piece_weight
+  - `final_score` (number): base_similarity × entry_type_weight × hierarchy_multiplier × importance_multiplier × piece_weight
   - `source_version` (string): Version of FCA_Handbook_Text_And_Embeddings used (e.g., "2026-Q1")
 
 **Process** (deterministic weighting only; embedding delegated to embed_text node; no LLM):
 1. Extract search terms: Combine all_search_terms from question_terms (mapped FCA Glossary terms + unmapped fallback terms)
 2. Receive pre-computed question_embedding from embed_text node (ensures question and handbook use same embedding model)
-3. Compute cosine similarity (numpy dot product) between question_embedding and rule embeddings from pre-loaded FCA_Handbook_Text_And_Embeddings
+3. Compute cosine similarity (numpy dot product) between question_embedding and entry embeddings from pre-loaded FCA_Handbook_Text_And_Embeddings
 4. Sort by cosine similarity, select top 50 candidates (deterministic filtering before weighting)
-5. Apply regulatory weighting algorithm (see StructuredSearch.md) to rank candidates by final_score: base_similarity × rule_type_weight × hierarchy_multiplier × importance_multiplier × piece_weight
+5. Apply regulatory weighting algorithm (see StructuredSearch.md) to rank candidates by final_score: base_similarity × entry_type_weight × hierarchy_multiplier × importance_multiplier × piece_weight
 6. Sort by final_score descending (deterministic ranking)
 7. Return top_k results with full weight_factors breakdown for auditability
 
@@ -346,21 +346,21 @@ Each action type is implemented by a Python class that conforms to an exact spec
 - No results found: Return empty array with informational log (not an error—some queries legitimately have no matches)
 
 **Messaging** (user-facing updates):
-- On start: "Searching FCA Handbook for relevant rules..." (message_type: "status")
-- On progress (after candidate filtering): "Retrieved {candidate_count} candidates from {total_rules} rules" (message_type: "progress")
+- On start: "Searching FCA Handbook for relevant entries..." (message_type: "status")
+- On progress (after candidate filtering): "Retrieved {candidate_count} candidates from {total_entries} entries" (message_type: "progress")
 - On progress (during weighting): "Applying regulatory weights to rank results..." (message_type: "progress")
-- On complete: "Retrieved {top_k} ranked rules ({top_1_score:.2f} similarity, {top_1_weight:.1f}x multiplier)" (message_type: "complete")
-- If no results: "No matching rules found for your question" (message_type: "warning")
+- On complete: "Retrieved {top_k} ranked entries ({top_1_score:.2f} similarity, {top_1_weight:.1f}x multiplier)" (message_type: "complete")
+- If no results: "No matching entries found for your question" (message_type: "warning")
 - On error: "Search failed. Check FCA Handbook data and weights configuration." (message_type: "error")
 - Message destination: User (all types; progressive updates)
 
 ### claude_reasoning
 
-**Purpose**: Invoke Claude to reason over retrieved rules and product features, producing a compliance analysis with citations and reasoning logs.
+**Purpose**: Invoke Claude to reason over retrieved entries and product features, producing a compliance analysis with citations and reasoning logs.
 
 **Input**:
 - `entity_features` (EntityFeatures object): Structured product information
-- `rules` (RankedRules array): Top-ranked FCA rules from semantic_search
+- `entries` (RankedEntries array): Top-ranked FCA entries from semantic_search
 
 **Configuration** (from YAML node config):
 - `Param_tools` (array of strings): Internal tool names available to Claude (e.g., ["citation_formatter", "audit_logger"])
@@ -370,60 +370,60 @@ Each action type is implemented by a Python class that conforms to an exact spec
 - `ComplianceAnalysis` (object) with fields:
   - `answer` (string): Claude's reasoning and conclusions
   - `citations` (array of objects):
-    - `rule_id` (string): FCA rule cited (e.g., "COBS 2.1.1R")
+    - `entry_id` (string): FCA entry cited (e.g., "COBS 2.1.1R")
     - `cited_text` (string): Exact verbatim text from FCA Handbook
-    - `context` (string): Sentence or paragraph from rule showing why it applies
-    - `binding_level` (string): "R", "G", "E", or "D" (from rule_id suffix)
+    - `context` (string): Sentence or paragraph from entry showing why it applies
+    - `binding_level` (string): "R", "G", "E", or "D" (from entry_id suffix)
   - `reasoning_log` (object):
-    - `reasoning_chain` (string): Claude's step-by-step logic ("rule X applies because feature Y matches criterion Z")
+    - `reasoning_chain` (string): Claude's step-by-step logic ("entry X applies because feature Y matches criterion Z")
     - `gaps_identified` (array of strings): Edge cases or areas of uncertainty
     - `confidence_score` (number, 0–1): Model's confidence in the analysis
   - `timestamp` (string): ISO 8601 timestamp of analysis
 
 **Process** (LLM reasoning with deterministic citation validation):
 1. Load Jinja2 prompt template from file (e.g., `harness/prompts/fca-compliance-analyst.md`)
-2. Construct system prompt by rendering template with entity_features and rules (deterministic). Rules include rule_id (authoritative identifier) for each RankedRule. Template syntax: `{{ entity_features }}`, `{{ ranked_rules }}`
+2. Construct system prompt by rendering template with entity_features and entries (deterministic). Entries include entry_id (authoritative identifier) for each RankedEntry. Template syntax: `{{ entity_features }}`, `{{ ranked_entries }}`
 3. Enable prompt caching for stable context (deterministic optimization)
-4. Call Claude API (LLM reasoning only — do not modify retrieved rules):
-   - System prompt (cached) — includes RankedRules with rule_id fields
+4. Call Claude API (LLM reasoning only — do not modify retrieved entries):
+   - System prompt (cached) — includes RankedEntries with entry_id fields
    - User message: question + available internal tools description
-   - Internal tools: citation_formatter, audit_logger (structured output enforcement; citation_formatter must extract rule_id from tool call)
+   - Internal tools: citation_formatter, audit_logger (structured output enforcement; citation_formatter must extract entry_id from tool call)
    - Model: claude-opus with thinking tokens enabled
    - Temperature: 0.5 (deterministic but thoughtful)
    - Max tokens: 2000
    - Extended thinking: enabled
-5. Parse Claude's response to extract reasoning_log, citations (by rule_id from tool_use), and answer text
-6. Validate each citation using deterministic rule_id lookup in RankedRules array (not regex, not LLM-based)
+5. Parse Claude's response to extract reasoning_log, citations (by entry_id from tool_use), and answer text
+6. Validate each citation using deterministic entry_id lookup in RankedEntries array (not regex, not LLM-based)
 7. Construct ComplianceAnalysis object with full traceability
 
 **Validation**:
 - `entity_features`: Must match EntityFeatures schema
-- `rules`: Non-empty array of RankedRules
+- `entries`: Non-empty array of RankedEntries
 - `Param_prompt_template`: File must exist, be valid markdown, use valid Jinja2 syntax (`{{ variable }}`)
 - `Param_tools`: Array of valid tool names (must be recognized by Claude API)
-- Each citation in output: rule_id must exist in the RankedRules array; cited_text must match the corresponding rule's text field exactly
-- Citation lookup: Use rule_id to find the rule in RankedRules; do NOT use regex to extract or validate rule_id
-- If citation validation fails: flag in output with error "Citation {rule_id} not found in retrieved rules" or "Citation {rule_id} text mismatch: expected '[actual_text]' but model cited '[cited_text]'"
+- Each citation in output: entry_id must exist in the RankedEntries array; cited_text must match the corresponding entry's text field exactly
+- Citation lookup: Use entry_id to find the entry in RankedEntries; do NOT use regex to extract or validate entry_id
+- If citation validation fails: flag in output with error "Citation {entry_id} not found in retrieved entries" or "Citation {entry_id} text mismatch: expected '[actual_text]' but model cited '[cited_text]'"
 
 **Error Handling**:
 - Prompt template missing: Return error "Prompt template not found at {path}"
-- Claude API unavailable: Return error "LLM service unavailable. Unable to reason over rules."
+- Claude API unavailable: Return error "LLM service unavailable. Unable to reason over entries."
 - Citation validation fails: Include warning in ComplianceAnalysis.reasoning_log; do not halt (compliance analyst should review)
 - Empty reasoning output: Return error "LLM produced no usable reasoning output"
 
 **Messaging** (user-facing updates):
 - On start: "Analyzing compliance requirements with Claude..." (message_type: "status")
 - On Claude thinking: "Claude is reasoning (thinking tokens enabled)..." (message_type: "progress")
-- On complete: "Analysis complete. {citation_count} rules identified, confidence: {confidence_score:.0%}" (message_type: "complete")
+- On complete: "Analysis complete. {citation_count} entries identified, confidence: {confidence_score:.0%}" (message_type: "complete")
 - On citation warning: "Citation validation warning: {warning_message}" (message_type: "warning")
 - On error: "LLM analysis failed. Please try again." (message_type: "error")
 - Message destination: User (all types; progressive transparency)
 
 **Citation Validation** (sub-process):
 1. For each citation in Claude's response:
-   - Extract rule_id and cited_text
-   - Find rule in source rules by rule_id
-   - Check if cited_text appears verbatim in rule.text (allow for whitespace normalization)
+   - Extract entry_id and cited_text
+   - Find entry in source entries by entry_id
+   - Check if cited_text appears verbatim in entry.text (allow for whitespace normalization)
    - If mismatch: log warning with both texts for compliance review
 
 ### approval_gate

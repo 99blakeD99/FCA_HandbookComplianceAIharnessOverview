@@ -54,11 +54,11 @@ Workflow execution is as set out in the YAML and Action Specifications in Genera
 
 ## Audit Trail Example
 
-When regulators ask "How did you decide rules A, B, C apply?", this implementation provides a complete trace:
+When regulators ask "How did you decide entries A, B, C apply?", this implementation provides a complete trace:
 
 1. **YAML node 1 (extract_features)**: "We extracted these features from your product description"
-2. **YAML node 2 (retrieve_rules)**: "We queried FCA Handbook v2026Q1 from `FCA_Handbook_Text_And_Embeddings` for matching rules (Param_top_k=20)"
-3. **YAML node 3 (analyze_compliance)**: "Claude reasoned that rules A, B, C apply: [reasoning log with timestamp]"
+2. **YAML node 2 (retrieve_entries)**: "We queried FCA Handbook v2026Q1 from `FCA_Handbook_Text_And_Embeddings` for matching entries (Param_top_k=20)"
+3. **YAML node 3 (analyze_compliance)**: "Claude reasoned that entries A, B, C apply: [reasoning log with timestamp]"
 4. **YAML node 4 (human_review)**: "Compliance officer [name] reviewed and approved on [timestamp] with actions [approved, identity_verified, snapshot_recorded]"
    - Both `timestamp` and `actions_carried_out` are declared as `required_fields` in the YAML, ensuring they are always captured
 
@@ -77,7 +77,7 @@ Each interaction is appended to `interactions.json`:
   "timestamp": "ISO-8601",
   "product_description": "string",
   "question": "string",
-  "rules_retrieved": [{"id": int, "header": "string", "rank": int, "similarity": float}],
+  "entries_retrieved": [{"id": int, "header": "string", "rank": int, "similarity": float}],
   "claude_reasoning": "string",
   "approval_decision": "approved|rejected",
   "approver_comment": "string",
@@ -87,9 +87,9 @@ Each interaction is appended to `interactions.json`:
 
 ### Purposes
 
-**a. Compliance**: Complete audit trail of decisions, rules applied, and approvals. Answers "How was this decision made?"
+**a. Compliance**: Complete audit trail of decisions, entries applied, and approvals. Answers "How was this decision made?"
 
-**b. Feedback**: Analyze interaction patterns (rejected approvals, follow-up questions, rule frequencies) to identify process gaps and embedding quality issues.
+**b. Feedback**: Analyze interaction patterns (rejected approvals, follow-up questions, entry frequencies) to identify process gaps and embedding quality issues.
 
 ### Future Migration
 
