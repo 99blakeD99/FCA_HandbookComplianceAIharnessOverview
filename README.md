@@ -38,23 +38,23 @@ This is the Tool Description that appears to external LLMs (e.g., Claude) to ena
 
 To understand the Compliance Agent Harness architecture, read the documents in order:
 
-1. **README.md** (this document). Conceptual overview of the Harness.
+1. **[README.md](README.md)** (this document). Conceptual overview of the Harness.
 
-2. **EmbeddingModel.md**. Outline of considerations surrounding choice of embedding model.
+2. **[EmbeddingModel.md](EmbeddingModel.md)**. Outline of considerations surrounding choice of embedding model.
 
-3. **StructuredSearch.md**. How to rank search results, having regard to the highly structured organisation of codified requirements. Foundational to the semantic_search action. 
+3. **[StructuredSearch.md](StructuredSearch.md)**. How to rank search results, having regard to the highly structured organisation of codified requirements. Foundational to the semantic_search action. 
 
-4. **FirstImplementation.md**. One reference implementation. 
+4. **[FirstImplementation.md](FirstImplementation.md)**. One reference implementation. 
 
-5. **GeneralEnquirySpecs.md**. Workflow definition (YAML) and detailed specifications for each action type. Future workflows will have similar spec files.
+5. **[GeneralEnquirySpecs.md](GeneralEnquirySpecs.md)**. Workflow definition (YAML) and detailed specifications for each action type. Future workflows will have similar spec files.
 
-6. **PythonImplementation.md**. Detailed Python implementation patterns.
+6. **[PythonImplementation.md](PythonImplementation.md)**. Detailed Python implementation patterns.
 
-7. **UIStrategy.md**. Design outline for demo. The Harness will normally be called as part of a bigger system, but a standalone demo will be useful. Also see UI_mockup.html (open in browser).
+7. **[UIStrategy.md](UIStrategy.md)**. Design outline for demo. The Harness will normally be called as part of a bigger system, but a standalone demo will be useful. Also see [UI_mockup.html](https://htmlpreview.github.io/?https://github.com/99blakeD99/FCA_HandbookComplianceAIharnessOverview/blob/main/UI_mockup.html) (open in browser).
 
-8. **FCA_Handbook_Template_PRIN.json**. A concrete unofficial subset of data with two embeddings (Voyage 3-Large and OpenAI text-embedding-3-large models).
+8. **[FCA_Handbook_Template_PRIN.json](FCA_Handbook_Template_PRIN.json)**. A concrete unofficial subset of data with two embeddings (Voyage 3-Large and OpenAI text-embedding-3-large models).
 
-9. **Status.md**. Outstanding issues which need design decisions before coding. Some will be resolved as feedback emerges; others are decisions for those forking the repo for their own implementation.
+9. **[Status.md](Status.md)**. Outstanding issues which need design decisions before coding. Some will be resolved as feedback emerges; others are decisions for those forking the repo for their own implementation.
 
 ## FCA_Handbook_Text_And_Embeddings
 
