@@ -19,12 +19,12 @@ This is the Tool Description that appears to external LLMs (e.g., Claude) to ena
 > **FCA Handbook Compliance Enquiry**
 >
 > Use this tool to answer questions about FCA regulatory compliance. The tool:
-> - Retrieves relevant FCA Handbook rules via semantic search with regulatory weighting
-> - Reasons over retrieved rules to determine applicability to specific situations
-> - Provides citations with exact rule text for audit and verification
+> - Retrieves relevant FCA Handbook entries via semantic search with regulatory weighting
+> - Reasons over retrieved entries to determine applicability to specific situations
+> - Provides citations with exact entry text for audit and verification
 > - Returns a formal compliance analysis with identified gaps and confidence scores
 >
-> Invoke when users ask: "Which FCA rules apply to [product/service]?", "Is [situation] compliant?", or similar regulatory questions.
+> Invoke when users ask: "Which FCA Handbook requirements apply to [product/service]?", "Is [situation] compliant?", or similar regulatory questions.
 >
 > Do NOT invoke for non-FCA questions, general financial advice, or questions outside UK financial services regulation.
 
