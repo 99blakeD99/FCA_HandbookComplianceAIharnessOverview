@@ -1,5 +1,13 @@
 # Embedding Model 
 
+## What is an Embedding Model?
+
+An embedding model converts 'chunks' of text into a vector (a fixed-size list of numbers representing position in multi-dimensional space). For example, Voyage 3-large produces 3072-dimensional vectors.
+
+For the FCA Handbook, chunks are set as being delimited by the headings. Each chunk consists of many 'tokens' (each token roughly corresponding to one word), and is represented by one vector. This encodes its semantic meaning. 
+
+Cosine similarity is a trigonometrical function that measures how close together vectors are. This is the core method of semantic search: comparing vectors via cosine similarity tells you how similar two pieces of text are in meaning, without keyword matching.
+
 ## Action
 
 The first step in preparing for this Harness is to ensure that the JSON file containing the codified requirements (in this case the FCA Handbook) is modified to include embeddings (as illustrated in FCA_Handbook_Template_PRIN.json). This can readily be done by instructing a suitable LLM.
@@ -48,9 +56,9 @@ These characteristics inform the embedding model choice: a model with longer con
 
 Implementation has two components, both of which require an API key:
 
-1. One-Off. The JSON containing the codified requirements (the FCA Handbook) needs to be supplemented by the Embeddings. This is easily done by instructing a suitable LLM such as Claude to do it. 
+1. One-Off. The JSON containing the codified requirements (the FCA Handbook) needs to be supplemented by the Embeddings. This is easily done by instructing a suitable LLM such as Claude to do it, taking care to specify that chunks are delimited by Headings. 
 
-2. Per User Question (after passing entry point validation). The User Question has to be embedded with the same Embedding model (voyage-3-large). This is foundational: otherwise the Question and the semantic search will be at cross-purposes.
+2. Per User Question (after passing entry point validation). The User Question has to be embedded with the same Embedding model (voyage-3-large). This is foundational: otherwise the Question and the semantic search will be at cross-purposes. The cost of this embedding is trivial.
 
 ### Previous Model
 

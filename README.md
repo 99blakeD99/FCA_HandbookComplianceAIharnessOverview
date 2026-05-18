@@ -42,9 +42,9 @@ To understand the Compliance Agent Harness architecture, read the documents in o
 
 2. **EmbeddingModel.md**. Outline of considerations surrounding choice of embedding model.
 
-3. **FirstImplementation.md**. One reference implementation. 
+3. **StructuredSearch.md**. How to rank search results, having regard to the highly structured organisation of codified requirements. Foundational to the semantic_search action. 
 
-4. **StructuredSearch.md**. How to rank search results, having regard to the highly structured organisation of codified requirements. Foundational to the semantic_search action. 
+4. **FirstImplementation.md**. One reference implementation. 
 
 5. **GeneralEnquirySpecs.md**. Workflow definition (YAML) and detailed specifications for each action type. Future workflows will have similar spec files.
 
