@@ -30,7 +30,7 @@ This is the Tool Description that appears to external LLMs (e.g., Claude) to ena
 
 **Deployment of this Tool Description:**
 
-- **Direct integration:** Include the description in the LLM SDK tool definition (Anthropic, OpenAI, etc.) when calling the LLM
+- **Direct integration:** Include the description in the LLM SDK tool definition (Anthropic, OpenAI, etc.) so the external LLM can invoke the tool
 - **Service deployment:** Store in service code or configuration (YAML/JSON) when exposing the Harness as an API
 - **Tool marketplace:** Register in the platform's tool definition interface (e.g., Anthropic tool marketplace, LLM-specific registries)
 
