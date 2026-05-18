@@ -14,7 +14,7 @@ The specifications are written using conventions which are human readable, but s
 
 ## Tool Description
 
-This is the Tool Description that appears to external LLMs (e.g., Claude) to enable them to route compliance questions appropriately:
+This is the Tool Description that appears to external LLMs to enable them to route compliance questions appropriately:
 
 > **FCA Handbook Compliance Enquiry**
 >
