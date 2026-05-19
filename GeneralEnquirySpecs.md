@@ -6,7 +6,7 @@ The general_enquiry workflow handles: product/service description → feature ex
 
 Other workflows (regulatory_change_analysis, incident_investigation, etc.) will have similar specifications files, following this template.
 
-## Workflow Definition
+## Workflow Definition YAML
 
 ```yaml
 harness:
@@ -182,6 +182,7 @@ Each action type is implemented by a Python class that conforms to an exact spec
 - If any required field missing: raise error with field name
 
 **Error Handling**:
+- Non-markdown file detected: Return error "You need to convert your file to markdown format first. This is normally a simple process but it is better if you keep control of it. Ask your LLM to help."
 - Invalid markdown: Return error "Unable to parse product description structure"
 - Missing required fields: Return error "Missing required field: {field_name}"
 - Field validation fails: Return error "Invalid value for {field_name}: {reason}"

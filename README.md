@@ -8,6 +8,8 @@ The Harness is necessary in order to ensure that the internal LLM actually uses 
 
 This architecture is put forward as a template for Compliance AI, enabling modification to suit other codified requirements. The starting point is a JSON file containing the codified requirements (to which as a prerequisite first step appropriate embeddings need to be added). Essentially this repo sets out a map of what to do with it.
 
+The Harness accommodates realistic scenarios where users upload additional information with their questions. For example: "Attached is a file setting out a new product. Which entries in the FCA Handbook are relevant?". (The file must be in markdown format.)
+
 These specifications have not been live-tested in a production environment. Implementation should be validated against real-world compliance workflows and regulatory scrutiny before deployment in regulated use.
 
 The specifications are written using conventions which are human readable, but structured such as to enable giving to a suitable LLM with the instruction to create the requisite code. Similarly an auditor wishing to verify that the chain from specs to python has integrity can simply ask a suitable LLM. 
